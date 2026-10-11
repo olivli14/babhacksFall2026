@@ -159,7 +159,7 @@ export function labelBounds(label: string): { lo: number | null; hi: number | nu
 }
 
 export const getBusinesses = () => api<Business[]>("/api/businesses");
-export const onboard = (body: { url: string; city?: string; annual_revenue?: number }) =>
+export const onboard = (body: { url: string; name?: string; city?: string; annual_revenue?: number }) =>
   api<{ domain: string; profile: Business }>("/api/onboard", { method: "POST", body: JSON.stringify(body) });
 
 // Formatting

@@ -439,7 +439,7 @@ def upsert(profile):
         log(f"warn: Supabase write to businesses failed: {e}")
 
 
-def run(url, city=None, annual_revenue=None):
+def run(url, city=None, annual_revenue=None, name=None):
     """Record the raw input, onboard, save the profile, and mark the input ok/error."""
     input_id = None
     try:
@@ -457,6 +457,8 @@ def run(url, city=None, annual_revenue=None):
 
     try:
         profile = onboard(url, city, annual_revenue)
+        if name:
+            profile["name"] = name  # what the owner calls it beats the brand lookup
         upsert(profile)
     except Exception as e:
         mark({"status": "error", "error": str(e)[:500]})

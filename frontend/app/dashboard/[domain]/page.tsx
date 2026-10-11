@@ -36,7 +36,7 @@ export default function DashboardPage() {
     <div className="min-h-screen">
       <header className="mx-auto flex max-w-[1180px] items-end justify-between px-6 pb-4 pt-8 sm:px-10">
         <Wordmark />
-        <Link href="/" className="text-[14px] text-ink-2 underline-offset-4 hover:text-ink hover:underline">
+        <Link href="/start" className="text-[14px] text-ink-2 underline-offset-4 hover:text-ink hover:underline">
           Analyze another business
         </Link>
       </header>
@@ -305,7 +305,7 @@ function ErrorState({ message }: { message: string }) {
     <div className="mx-auto max-w-xl py-20 text-center">
       <p className="display text-[24px]">We couldn&apos;t load this dashboard.</p>
       <p className="mt-2 text-[15px] text-ink-2">{message}</p>
-      <Link href="/" className="mt-6 inline-block text-[14px] underline underline-offset-4">Start over</Link>
+      <Link href="/start" className="mt-6 inline-block text-[14px] underline underline-offset-4">Start over</Link>
     </div>
   );
 }

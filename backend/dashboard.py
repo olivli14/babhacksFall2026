@@ -96,6 +96,7 @@ def _bounds(row: dict) -> dict:
 
 class OnboardBody(BaseModel):
     url: str = Field(min_length=3, max_length=300)
+    name: str | None = Field(default=None, max_length=120)
     city: str | None = Field(default=None, max_length=80)
     annual_revenue: float | None = Field(default=None, gt=0, le=1_000_000_000)
 
@@ -125,7 +126,8 @@ def _business(domain: str) -> dict:
 @router.post("/onboard")
 def api_onboard(body: OnboardBody):
     try:
-        profile = onboard.run(body.url.strip(), (body.city or "").strip() or None, body.annual_revenue)
+        profile = onboard.run(body.url.strip(), (body.city or "").strip() or None, body.annual_revenue,
+                              (body.name or "").strip() or None)
     except onboard.OnboardError as e:
         raise HTTPException(400, str(e))
     return {"domain": profile["domain"], "profile": profile}
