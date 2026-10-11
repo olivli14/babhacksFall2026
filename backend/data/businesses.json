@@ -1,5 +1,30 @@
 [
   {
+    "domain": "creamistry.com",
+    "name": "Creamistry",
+    "logo_url": "https://media.brand.dev/7dee634b-5e2d-49de-9aef-39861874ec8b.png",
+    "address": "Los Angeles, CA",
+    "lat": 34.05223,
+    "lon": -118.24368,
+    "side": "cold_hurt",
+    "confidence": 0.862,
+    "reason_codes": [
+      "ice cream x61",
+      "sorbet x6",
+      "scoop x14"
+    ],
+    "business_type": "frozen_dessert",
+    "baseline_temp_f": 78,
+    "annual_revenue": 1500000.0,
+    "dollars_per_degree": 102.74,
+    "dollars_per_degree_source": "revenue",
+    "gemini_city": "Los Angeles",
+    "distance_miles": 12.1,
+    "location_source": "cli",
+    "menu_url": "https://www.creamistry.com/menu",
+    "onboarded_at": "2026-10-11T22:45:12+00:00"
+  },
+  {
     "domain": "dkramen.com",
     "name": "Daikokuya",
     "logo_url": "https://media.brand.dev/7b44aa22-01bd-4fa7-9c7f-e05a8a18d6d5.png",

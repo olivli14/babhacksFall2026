@@ -56,11 +56,11 @@ def _simulate(biz: dict, plan: dict, share: float) -> dict:
     rng = random.Random(42)  # same picture on every load
     temps = [round(rng.gauss(mean, sd)) for _ in range(SIM_DAYS)]
 
-    unhedged, hedged, paid = [], [], 0
+    unhedged, hedged, payouts = [], [], []
     for t in temps:
         pool_swing = sum(hedge.pnl(b, t) - expected[b["domain"]] for b in pool)
         payout = sum(b["contracts"] for b in plan["buckets"] if hedge.in_bucket(_bounds(b), t))
-        paid += payout > 0
+        payouts.append(payout)
         unhedged.append(hedge.pnl(biz, t) - expected[biz["domain"]])
         hedged.append(share * (pool_swing + payout - premium))
 
@@ -77,10 +77,14 @@ def _simulate(biz: dict, plan: dict, share: float) -> dict:
         xs_sorted = sorted(xs)
         return {"mean": round(statistics.mean(xs), 2), "worst": round(xs_sorted[0], 2),
                 "best": round(xs_sorted[-1], 2), "stdev": round(statistics.pstdev(xs), 2),
-                "p5": round(xs_sorted[len(xs) // 20], 2)}
+                "p5": round(xs_sorted[len(xs) // 20], 2), "p95": round(xs_sorted[-(len(xs) // 20) - 1], 2)}
 
     return {"days": SIM_DAYS, "forecast_mean_f": round(mean, 1), "forecast_sd_f": round(sd, 2),
-            "share": round(share, 3), "premium": round(share * premium, 2), "days_hedge_paid": paid,
+            "share": round(share, 3), "premium": round(share * premium, 2),
+            "days_hedge_paid": sum(p > 0 for p in payouts),
+            # Expected cost: your share of the premium minus your share of the average payout.
+            # Computed from the payouts directly; the swing terms average out and only add noise.
+            "avg_cost": round(share * (premium - statistics.mean(payouts)), 2),
             "unhedged": stats(unhedged), "hedged": stats(hedged), "histogram": bins}
 
 

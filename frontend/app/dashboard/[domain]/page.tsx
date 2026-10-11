@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Dashboard, getDashboard, labelBounds, longDate, usd, usdSigned } from "@/lib/api";
 import { Button, LegendItem, Section, Segmented, SideBadge, Stat, Swatch, Wordmark } from "@/components/ui";
-import { C, CostCompare, ForecastBars, HistoryChart, SimHistogram } from "@/components/charts";
+import { C, CostCompare, ForecastBars, HistoryChart, OutcomeRanges } from "@/components/charts";
 import { AgentsCard, ModeBadge } from "@/components/agents";
 
 const RANGES = [
@@ -197,16 +197,13 @@ function Body({ d, days, setDays, loading }: {
 function Simulation({ d }: { d: Dashboard }) {
   const sim = d.simulation!;
   const cut = Math.round((1 - sim.hedged.stdev / sim.unhedged.stdev) * 100);
-  const avgCost = sim.unhedged.mean - sim.hedged.mean;
   return (
     <Section n="04" title="A thousand tomorrows"
-             note={`Each simulated day draws tomorrow's high from the forecast (${sim.forecast_mean_f}°F, give or take ${sim.forecast_sd_f.toFixed(1)}°) and settles the pool's real contracts.`}>
-      <SimHistogram bins={sim.histogram} />
-      <div className="mt-3 flex flex-wrap gap-5">
-        <Swatch color={C.prior} label="Without the hedge" />
-        <Swatch color={C.ink} label="With the hedge" />
-        <span className="text-[13px] text-muted">Number of days at each result, compared with a day at the forecast</span>
-      </div>
+             note={`We drew 1,000 possible highs for tomorrow from the forecast (${sim.forecast_mean_f}°F, give or take ${sim.forecast_sd_f.toFixed(1)}°) and worked out your result each time, with and without the pool's hedge.`}>
+      <OutcomeRanges unhedged={sim.unhedged} hedged={sim.hedged} />
+      <p className="mt-4 text-[13px] text-muted">
+        Thick bar: where 9 days in 10 land. Thin line: the worst and best day. Results are compared with a day at the forecast.
+      </p>
       <div className="mt-10 grid gap-8 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-line">
         <div className="sm:pr-8">
           <Stat label="Worst day" value={<><span className="text-muted">{usd(sim.unhedged.worst)}</span> → {usd(sim.hedged.worst)}</>}
@@ -217,8 +214,8 @@ function Simulation({ d }: { d: Dashboard }) {
                 note={`A typical day moves ${usd(sim.unhedged.stdev)} unhedged, ${usd(sim.hedged.stdev)} hedged.`} />
         </div>
         <div className="sm:pl-8">
-          <Stat label="What it costs" value={`${usd(avgCost, 2)}`}
-                note={`a day on average. You pay ${usd(sim.premium, 2)} up front; payouts on ${sim.days_hedge_paid} of ${sim.days.toLocaleString()} days bring most of it back.`} />
+          <Stat label="What it costs" value={`${usd(sim.avg_cost, 2)} a day`}
+                note={`on average. You pay ${usd(sim.premium, 2)} up front; the contracts pay out on ${sim.days_hedge_paid} of ${sim.days.toLocaleString()} days and return most of it.`} />
         </div>
       </div>
     </Section>

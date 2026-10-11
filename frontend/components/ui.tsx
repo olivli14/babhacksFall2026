@@ -46,7 +46,7 @@ export function Stat({
   return (
     <div className="min-w-0">
       <p className="text-[13px] text-ink-2">{label}</p>
-      <p className={`display tabular mt-1.5 text-[32px] leading-none ${color}`}>{value}</p>
+      <p className={`display mt-1.5 text-[32px] leading-none ${color}`}>{value}</p>
       {note && <p className="mt-2.5 text-[13px] leading-snug text-muted">{note}</p>}
     </div>
   );

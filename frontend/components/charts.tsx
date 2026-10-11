@@ -2,7 +2,7 @@
 "use client";
 
 import {
-  Area, Bar, BarChart, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer,
+  Area, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
 } from "recharts";
 import { Bucket, Dashboard, Side, shortDate, usd, usdSigned } from "@/lib/api";
@@ -161,33 +161,44 @@ export function CostCompare({ alone, pooled }: { alone: number; pooled: number }
   );
 }
 
-/* ---------- 1,000 simulated tomorrows: distribution of daily results ---------- */
+/* ---------- 1,000 simulated tomorrows: range of results, unhedged vs hedged ---------- */
 
-export function SimHistogram({ bins }: { bins: { from: number; to: number; hedged: number; unhedged: number }[] }) {
-  const data = bins.map((b) => ({ ...b, mid: (b.from + b.to) / 2 }));
-  return (
-    <ResponsiveContainer width="100%" height={260}>
-      <BarChart data={data} barGap={2} barCategoryGap="18%" margin={{ top: 8, right: 12, bottom: 0, left: -12 }}>
-        <CartesianGrid vertical={false} stroke={C.line} />
-        <XAxis dataKey="mid" tickFormatter={(v) => usd(v)} tickLine={false} axisLine={{ stroke: C.base }} minTickGap={36} />
-        <YAxis tickLine={false} axisLine={false} width={44} allowDecimals={false} />
-        <Tooltip content={<SimTip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
-        <ReferenceLine x={data.reduce((best, b) => (Math.abs(b.mid) < Math.abs(best.mid) ? b : best), data[0]).mid} stroke={C.base} strokeDasharray="3 3" />
-        <Bar dataKey="unhedged" fill={C.prior} radius={[2, 2, 0, 0]} isAnimationActive={false} />
-        <Bar dataKey="hedged" fill={C.brand} radius={[2, 2, 0, 0]} />
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
+type Range = { worst: number; best: number; p5: number; p95: number };
 
-function SimTip({ active, payload }: { active?: boolean; payload?: { payload: { from: number; to: number; hedged: number; unhedged: number } }[] }) {
-  if (!active || !payload?.length) return null;
-  const r = payload[0].payload;
+export function OutcomeRanges({ unhedged, hedged }: { unhedged: Range; hedged: Range }) {
+  const lo = Math.min(unhedged.worst, hedged.worst);
+  const hi = Math.max(unhedged.best, hedged.best);
+  const pad = (hi - lo) * 0.04;
+  const x = (v: number) => ((v - (lo - pad)) / (hi - lo + 2 * pad)) * 100;
+  const rows = [
+    { label: "Without the hedge", r: unhedged, color: C.prior },
+    { label: "With the hedge", r: hedged, color: C.ink },
+  ];
   return (
-    <div className="rounded-md border border-line bg-card shadow-sm px-3 py-2.5 text-[13px]">
-      <p className="mb-1.5 font-medium text-ink">{usd(r.from)} to {usd(r.to)}</p>
-      <p className="tabular flex justify-between gap-6"><span className="text-ink-2">Without hedge</span><span className="text-ink">{r.unhedged} days</span></p>
-      <p className="tabular flex justify-between gap-6"><span className="text-ink-2">With hedge</span><span className="font-medium text-ink">{r.hedged} days</span></p>
+    <div className="relative">
+      {/* zero line: a day exactly at the forecast */}
+      <div className="pointer-events-none absolute bottom-6 top-0 w-px bg-line-strong" style={{ left: `calc(140px + (100% - 140px) * ${x(0) / 100})` }} />
+      <ul className="space-y-7">
+        {rows.map(({ label, r, color }) => (
+          <li key={label} className="grid grid-cols-[140px_1fr] items-center">
+            <span className="text-[14px] text-ink-2">{label}</span>
+            <div>
+              <div className="relative h-8">
+                <span className="absolute top-1/2 h-px -translate-y-1/2" style={{ left: `${x(r.worst)}%`, width: `${x(r.best) - x(r.worst)}%`, background: color }} />
+                <span className="absolute top-1/2 h-3 w-px -translate-y-1/2" style={{ left: `${x(r.worst)}%`, background: color }} />
+                <span className="absolute top-1/2 h-3 w-px -translate-y-1/2" style={{ left: `${x(r.best)}%`, background: color }} />
+                <span className="absolute inset-y-0 min-w-[3px] rounded-[2px]" style={{ left: `${x(r.p5)}%`, width: `${x(r.p95) - x(r.p5)}%`, background: color }} />
+              </div>
+              <p className="tabular mt-1.5 text-[13px] text-muted">
+                <span className="text-ink-2">{usdSigned(r.p5)} to {usdSigned(r.p95)}</span> on 9 days in 10 · worst {usd(r.worst)}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-4 pl-[140px] text-[12px] text-muted">
+        <span style={{ marginLeft: `calc(${x(0)}% - 60px)` }} className="inline-block w-[120px] text-center">a day at the forecast</span>
+      </p>
     </div>
   );
 }

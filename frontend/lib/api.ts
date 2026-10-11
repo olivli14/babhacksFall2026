@@ -71,7 +71,7 @@ export interface Dashboard {
   } | null;
 }
 
-export interface SimStats { mean: number; worst: number; best: number; stdev: number; p5: number }
+export interface SimStats { mean: number; worst: number; best: number; stdev: number; p5: number; p95: number }
 
 export interface Simulation {
   days: number;
@@ -79,6 +79,7 @@ export interface Simulation {
   forecast_sd_f: number;
   share: number;
   premium: number;
+  avg_cost: number;
   days_hedge_paid: number;
   unhedged: SimStats;
   hedged: SimStats;
