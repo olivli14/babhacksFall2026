@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 import config
 import contracts
+import dashboard
 import market
 import mm_agent
 import shop_agent
@@ -95,6 +96,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Weather Hedging Agents", lifespan=lifespan)
+app.include_router(dashboard.router)  # onboarding + dashboard routes (Satya)
 app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["*"],
                    allow_headers=["*"])
 

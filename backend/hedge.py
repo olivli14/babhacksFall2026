@@ -27,6 +27,7 @@ from datetime import date, datetime, timedelta, timezone
 import requests
 
 import db
+import forecast
 import onboard
 from onboard import DATA_FILE, GEMINI_EVENTS_URL, OnboardError, cached, http_get_json, log
 
@@ -199,21 +200,27 @@ def store_weather(city, station, hist, ev_date, members):
         log(f"warn: Supabase write to weather_daily failed: {e}")
 
 
-def plan(city, day=None):
+def bucket_prob(code, b, day):
+    """P(lo <= reported high <= hi) from forecast.prob_above (same model as the market maker)."""
+    p_lo = 1.0 if b["lo"] is None else forecast.prob_above(code, b["lo"], day)
+    p_hi = 0.0 if b["hi"] is None else forecast.prob_above(code, b["hi"] + 1, day)
+    return max(0.0, p_lo - p_hi)
+
+
+def plan(city, day=None, store=True):
     businesses = load_businesses(city)
     if not businesses:
         raise OnboardError(f"no classified businesses mapped to {city}")
 
     station = next(s for s in onboard.gemini_stations() if s["city"] == city)
     ev_date, buckets = market_for(city, day)
-    members = ensemble_highs(station["lat"], station["lon"], ev_date)
+    members = forecast._ensemble(station).get(ev_date.isoformat(), [])
     hist = history_highs(station["lat"], station["lon"])
-    store_weather(city, station, hist, ev_date, members)
+    if store:
+        store_weather(city, station, hist, ev_date, members)
 
-    # Probability per bucket: ensemble share, floored, renormalized.
-    raw = [sum(in_bucket(b, m) for m in members) / len(members) if members else 1 / len(buckets)
-           for b in buckets]
-    raw = [max(MIN_PROB, p) for p in raw]
+    # Probability per bucket from the shared forecast model, floored, renormalized.
+    raw = [max(MIN_PROB, bucket_prob(station["code"], b, ev_date.isoformat())) for b in buckets]
     total = sum(raw)
     for b, p in zip(buckets, raw):
         b["model_prob"] = round(p / total, 3)
@@ -226,7 +233,8 @@ def plan(city, day=None):
     pooled = [sum(col) for col in zip(*per_biz.values())]
 
     pooled_contracts, pooled_cost = hedge_cost(pooled, buckets)
-    standalone_cost = sum(hedge_cost(losses, buckets)[1] for losses in per_biz.values())
+    standalone = {d: hedge_cost(losses, buckets)[1] for d, losses in per_biz.items()}
+    standalone_cost = sum(standalone.values())
 
     probs = [b["model_prob"] for b in buckets]
     expected_pnl = sum(p * q for p, q in zip(pooled, probs))
@@ -250,8 +258,10 @@ def plan(city, day=None):
         "businesses": [{"domain": x["domain"], "side": x["side"], "baseline_temp_f": x["baseline_temp_f"],
                         "dollars_per_degree": x["dollars_per_degree"]} for x in businesses],
         "net_dollars_per_degree": round(net_slope, 2),
-        "forecast": {"model": ENSEMBLE_MODEL, "members": len(members),
-                     "mean_high_f": round(statistics.mean(members), 1) if members else None},
+        "forecast": {**{k: (round(v, 2) if isinstance(v, float) else v)
+                        for k, v in forecast.distribution(station["code"], ev_date.isoformat()).items()},
+                     "mean_high_f": round(forecast.distribution(station["code"], ev_date.isoformat())["mean_f"], 1)},
+        "hedge_cost_by_business": standalone,
         "buckets": rows,
         "expected_pool_pnl": round(expected_pnl, 2),
         "expected_shortfall": round(exp_shortfall, 2),

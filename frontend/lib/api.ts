@@ -1,94 +1,72 @@
+// AI-generated with Claude (Anthropic).
+// Typed client for the backend. The frontend holds no secrets and calls only this API.
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
 
-export type Mode = "mock" | "sandbox";
+export type Side = "heat_hurt" | "cold_hurt" | "needs_review";
 
-export interface Profile {
-  business_type: string;
-  location: string;
-  baseline_revenue: number;
-  weather_variable: "temperature_high";
-  bad_direction: "below" | "above";
-  threshold_f: number;
-  loss_per_degree: number;
-  premium_budget: number;
+export interface Business {
+  domain: string;
+  name: string | null;
+  logo_url: string | null;
+  address: string | null;
+  side: Side;
+  confidence: number;
+  reason_codes: string[];
+  business_type: string | null;
+  baseline_temp_f: number | null;
+  annual_revenue: number | null;
+  dollars_per_degree: number | null;
+  dollars_per_degree_source: "revenue" | "default" | null;
+  gemini_city: string | null;
+  distance_miles: number | null;
 }
 
-export interface Quote {
-  fair_value: number;
-  bid: number;
-  ask: number;
-  size: number;
-  inventory_yes: number;
-  inventory_no: number;
-}
-
-export interface ContractRow {
-  symbol: string;
-  bucket: string;
-  lo: number | null;
-  hi: number | null;
-  fair_value: number;
-  book: { bids: [number, number][]; asks: [number, number][] };
-  mm_quotes: Quote | null;
-}
-
-export interface MarketResp {
-  mode: Mode;
-  event: string;
-  event_title: string;
-  contracts: ContractRow[];
-}
-
-export interface Leg {
-  symbol: string;
-  bucket: string;
-  prob: number;
-  loss_if_hit: number;
-  ask: number;
-  qty: number;
-  cost: number;
-}
-
-export interface Recommendation {
-  event: string;
-  event_title: string;
-  location: string;
-  date: string;
-  prob_bad_weather: number;
-  expected_lost_revenue: number;
-  premium: number;
-  max_payout: number;
-  coverage: number;
-  legs: Leg[];
-  explanation: string;
-}
-
-export interface Scenario {
+export interface Bucket {
+  label: string;
+  model_prob: number;
+  market_price: number | null;
   temp_f: number;
-  revenue: number;
-  hedge_payout: number;
-  premium: number;
-  hedge_pnl: number;
-  net: number;
-  net_unhedged: number;
 }
 
-export interface Health {
-  mode: Mode;
-  mm_running: boolean;
-  mm_event: string | null;
-  sandbox_ok: boolean;
-  live_running: boolean;
-}
-
-export interface LiveStatus {
-  mode: Mode;
-  running: boolean;
-  symbol?: string | null;
-  description?: string;
-  error?: string | null;
-  mm_quote?: Quote | null;
-  log: string[];
+export interface Dashboard {
+  business: Business;
+  hub: { gemini_city: string; code: string | null; station: string; distance_miles: number | null } | null;
+  forecast: {
+    date: string;
+    mean_high_f: number;
+    sd_f: number;
+    source: "ensemble" | "climatology";
+    members: number;
+    buckets: Bucket[];
+  } | null;
+  recommendation: {
+    date: string;
+    your_daily_cost: number;
+    standalone_daily_cost: number;
+    pool_daily_cost: number;
+    pool_standalone_cost: number;
+    pool_savings_pct: number;
+    pool_size: number;
+    net_dollars_per_degree: number;
+    contracts: { bucket: string; contracts: number; price: number; price_source: string; cost: number }[];
+  } | null;
+  pool: { domain: string; name: string; side: Side; dollars_per_degree: number }[];
+  temperature_history: { date: string; year: number; years_back: number; high_f: number }[];
+  pnl_series: { date: string; high_f: number; normal_high_f: number; unhedged: number; hedged: number }[];
+  summary: {
+    days: number;
+    from: string;
+    to: string;
+    worst_day: { date: string; high_f: number; normal_high_f: number; unhedged: number; hedged: number };
+    bad_days: number;
+    stdev_unhedged: number;
+    stdev_hedged: number;
+    daily_fee_pooled: number;
+    daily_fee_alone: number;
+    total_fee_pooled: number;
+    total_fee_alone: number;
+    total_losses_unhedged: number;
+  } | null;
 }
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -103,18 +81,30 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
       const body = await res.json();
       detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail ?? body);
     } catch {}
-    throw new Error(`${res.status}: ${detail}`);
+    throw new Error(detail);
   }
   return res.json();
 }
 
-export function bucketLabel(b: string): string {
-  if (b.startsWith("LO")) return `≤ ${b.slice(2)}°F`;
-  if (b.startsWith("HI")) return `≥ ${b.slice(2)}°F`;
-  const [a, z] = b.split("TO");
-  return `${a}–${z}°F`;
-}
+export const getDashboard = (domain: string, days: number) =>
+  api<Dashboard>(`/api/dashboard?domain=${encodeURIComponent(domain)}&days=${days}`);
+export const getBusinesses = () => api<Business[]>("/api/businesses");
+export const onboard = (body: { url: string; city?: string; annual_revenue?: number }) =>
+  api<{ domain: string; profile: Business }>("/api/onboard", { method: "POST", body: JSON.stringify(body) });
 
-export const usd = (n: number) =>
-  (n < 0 ? "−$" : "$") + Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
+// Formatting
+export const usd = (n: number, digits = 0) =>
+  (n < 0 ? "−$" : "$") +
+  Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+export const usdSigned = (n: number) => (n > 0 ? "+" : "") + usd(n);
 export const pct = (n: number) => `${Math.round(n * 100)}%`;
+export const shortDate = (iso: string) =>
+  new Date(iso + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+export const longDate = (iso: string) =>
+  new Date(iso + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+
+export const sideLabel: Record<Side, string> = {
+  heat_hurt: "Hurt by heat",
+  cold_hurt: "Hurt by cold",
+  needs_review: "Needs review",
+};

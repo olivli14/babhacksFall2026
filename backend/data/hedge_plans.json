@@ -135,5 +135,150 @@
       "avg_daily_premium_standalone": 405.64
     },
     "generated_at": "2026-10-11T21:31:13+00:00"
+  },
+  {
+    "city": "Los Angeles",
+    "date": "2026-10-12",
+    "station": {
+      "lat": 33.9425,
+      "lon": -118.4081
+    },
+    "businesses": [
+      {
+        "domain": "dkramen.com",
+        "side": "heat_hurt",
+        "baseline_temp_f": 72,
+        "dollars_per_degree": 61.64
+      },
+      {
+        "domain": "gget.com",
+        "side": "heat_hurt",
+        "baseline_temp_f": 75,
+        "dollars_per_degree": 30
+      },
+      {
+        "domain": "wanderlustcreamery.com",
+        "side": "cold_hurt",
+        "baseline_temp_f": 78,
+        "dollars_per_degree": 50
+      }
+    ],
+    "net_dollars_per_degree": -41.64,
+    "forecast": {
+      "code": "LA",
+      "mean_f": 66.89,
+      "sd_f": 2.83,
+      "source": "ensemble",
+      "members": 82,
+      "mean_high_f": 66.9
+    },
+    "hedge_cost_by_business": {
+      "dkramen.com": 60.62,
+      "gget.com": 29.62,
+      "wanderlustcreamery.com": 49.86
+    },
+    "buckets": [
+      {
+        "bucket": "63\u00b0F or below",
+        "instrument": "GEMI-WXHIGH-LA-2610130359-LO63",
+        "temp_f": 63.1,
+        "model_prob": 0.115,
+        "ask": null,
+        "price": 0.115,
+        "price_source": "model (no quote)",
+        "edge": 0.0,
+        "pool_pnl": 160.6,
+        "contracts": 0,
+        "cost": 0.0
+      },
+      {
+        "bucket": "64\u00b0F to 65\u00b0F",
+        "instrument": "GEMI-WXHIGH-LA-2610130359-64TO65",
+        "temp_f": 64.7,
+        "model_prob": 0.196,
+        "ask": null,
+        "price": 0.196,
+        "price_source": "model (no quote)",
+        "edge": 0.0,
+        "pool_pnl": 93.97,
+        "contracts": 0,
+        "cost": 0.0
+      },
+      {
+        "bucket": "66\u00b0F to 67\u00b0F",
+        "instrument": "GEMI-WXHIGH-LA-2610130359-66TO67",
+        "temp_f": 66.6,
+        "model_prob": 0.274,
+        "ask": null,
+        "price": 0.274,
+        "price_source": "model (no quote)",
+        "edge": 0.0,
+        "pool_pnl": 14.86,
+        "contracts": 0,
+        "cost": 0.0
+      },
+      {
+        "bucket": "68\u00b0F to 69\u00b0F",
+        "instrument": "GEMI-WXHIGH-LA-2610130359-68TO69",
+        "temp_f": 68.5,
+        "model_prob": 0.237,
+        "ask": null,
+        "price": 0.237,
+        "price_source": "model (no quote)",
+        "edge": 0.0,
+        "pool_pnl": -64.26,
+        "contracts": 64,
+        "cost": 15.17
+      },
+      {
+        "bucket": "70\u00b0F to 71\u00b0F",
+        "instrument": "GEMI-WXHIGH-LA-2610130359-70TO71",
+        "temp_f": 69.8,
+        "model_prob": 0.126,
+        "ask": null,
+        "price": 0.126,
+        "price_source": "model (no quote)",
+        "edge": 0.0,
+        "pool_pnl": -118.39,
+        "contracts": 118,
+        "cost": 14.87
+      },
+      {
+        "bucket": "72\u00b0F or above",
+        "instrument": "GEMI-WXHIGH-LA-2610130359-HI72",
+        "temp_f": 72.2,
+        "model_prob": 0.051,
+        "ask": null,
+        "price": 0.051,
+        "price_source": "model (no quote)",
+        "edge": 0.0,
+        "pool_pnl": -218.33,
+        "contracts": 218,
+        "cost": 11.12
+      }
+    ],
+    "expected_pool_pnl": -0.32,
+    "expected_shortfall": 41.15,
+    "hedge_cost_pooled": 41.15,
+    "hedge_cost_standalone": 140.1,
+    "netting_savings": 98.95,
+    "backtest": {
+      "days": 365,
+      "from": "2025-10-09",
+      "to": "2026-10-08",
+      "avg_high_f": 72.0,
+      "below_average_days": 174,
+      "worst_day": {
+        "date": "2026-10-03",
+        "high_f": 99.1,
+        "pnl_unhedged": -1338.44,
+        "pnl_hedged": -329.3
+      },
+      "daily_stdev_unhedged": 297.96,
+      "daily_stdev_hedged": 154.27,
+      "avg_daily_premium_pooled": 119.25,
+      "avg_daily_premium_standalone": 405.64
+    },
+    "generated_at": "2026-10-11T21:45:18+00:00"
   }
 ]
