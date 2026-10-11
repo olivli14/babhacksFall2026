@@ -22,6 +22,7 @@ Store the Context.dev API key in the OS keychain (prompts for the value, nothing
 .venv/bin/python onboard.py https://www.example-ramen.com
 .venv/bin/python onboard.py example-ramen.com --refresh   # bypass cache/
 .venv/bin/python onboard.py starbucks.com --city "Los Angeles, CA"   # pick the branch city
+.venv/bin/python onboard.py dkramen.com --annual-revenue 1500000     # size exposure to revenue
 ```
 
 Prints the profile JSON to stdout, logs to stderr. Exit codes: `0` ok, `1` unexpected error, `2` config/input error (missing key, bad URL, no data).
@@ -30,7 +31,7 @@ Prints the profile JSON to stdout, logs to stderr. Exit codes: `0` ok, `1` unexp
 
 1. **Context.dev**: brand lookup by domain (name, logo, address, industry), Map to find a `menu`/`products`/`shop` page, scrape homepage and menu page as markdown.
 2. **Classify**: weighted keyword hits over brand description and scraped text. Confidence = winning side's share of total score. Below 0.6 the side is `needs_review`.
-3. **Sensitivity**: `BUSINESS_TYPES` at the top of `onboard.py` sets keywords, `baseline_temp_f`, and `dollars_per_degree` per type. Edit there.
+3. **Sensitivity**: `BUSINESS_TYPES` at the top of `onboard.py` sets keywords and `baseline_temp_f` per type. With `--annual-revenue`, `dollars_per_degree = annual_revenue / 365 * revenue_drop_pct_per_degree`; without it, the type's flat `dollars_per_degree` default is used. `dollars_per_degree_source` says which. The percentages are placeholder guesses; edit them there.
 4. **Location**: `--city` if given, else the brand address, else the most-cited "City, ST 12345" on the homepage, menu, or locations page. `location_source` records which (`cli`, `brand`, `site_text`).
 5. **Gemini city**: nearest active Gemini weather city by haversine distance. Gemini cities and the business city are geocoded with Open-Meteo; Los Angeles is pinned to the LAX station.
 6. **Write**: upsert by `domain` into `data/businesses.json`.
@@ -47,4 +48,4 @@ Every Context.dev, Gemini, and Open-Meteo response is cached in `cache/`, keyed 
 
 ## Profile schema
 
-`domain, name, logo_url, address, lat, lon, side, confidence, reason_codes, business_type, baseline_temp_f, dollars_per_degree, gemini_city, distance_miles, location_source, menu_url, onboarded_at`
+`domain, name, logo_url, address, lat, lon, side, confidence, reason_codes, business_type, baseline_temp_f, annual_revenue, dollars_per_degree, dollars_per_degree_source, gemini_city, distance_miles, location_source, menu_url, onboarded_at`

@@ -15,12 +15,14 @@
     ],
     "business_type": "noodle_soup",
     "baseline_temp_f": 72,
-    "dollars_per_degree": 60,
+    "annual_revenue": 1500000.0,
+    "dollars_per_degree": 61.64,
+    "dollars_per_degree_source": "revenue",
     "gemini_city": "Los Angeles",
     "distance_miles": 12.1,
     "location_source": "site_text",
     "menu_url": null,
-    "onboarded_at": "2026-10-11T20:24:01+00:00"
+    "onboarded_at": "2026-10-11T20:40:31+00:00"
   },
   {
     "domain": "gget.com",
@@ -38,12 +40,14 @@
     ],
     "business_type": "hot_coffee_bakery",
     "baseline_temp_f": 75,
+    "annual_revenue": null,
     "dollars_per_degree": 30,
+    "dollars_per_degree_source": "default",
     "gemini_city": "Los Angeles",
     "distance_miles": 12.1,
     "location_source": "site_text",
     "menu_url": "https://gget.com/collections/current-menu",
-    "onboarded_at": "2026-10-11T20:24:02+00:00"
+    "onboarded_at": "2026-10-11T20:40:31+00:00"
   },
   {
     "domain": "wanderlustcreamery.com",

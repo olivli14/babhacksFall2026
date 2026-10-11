@@ -2,7 +2,7 @@
 # AI-generated with Claude (Anthropic). Review before relying on it.
 """Onboard a business from its website URL into data/businesses.json.
 
-Usage: python onboard.py <url> [--refresh] [--city "City, ST"]
+Usage: python onboard.py <url> [--refresh] [--city "City, ST"] [--annual-revenue USD]
 """
 import argparse
 import hashlib
@@ -28,27 +28,29 @@ from context.dev import ContextDev  # noqa: E402
 
 # Business types. side: which weather hurts. Keywords: phrase -> weight.
 # baseline_temp_f: daily high where the business is neutral.
-# dollars_per_degree: profit lost per degree F past baseline
-# (above baseline for heat_hurt, below for cold_hurt).
+# revenue_drop_pct_per_degree: share of daily revenue lost per degree F past
+# baseline (above baseline for heat_hurt, below for cold_hurt). Used when
+# --annual-revenue is given: dollars_per_degree = annual_revenue / 365 * pct.
+# dollars_per_degree: flat fallback when revenue is unknown.
 BUSINESS_TYPES = {
     "noodle_soup": {
-        "side": "heat_hurt", "baseline_temp_f": 72, "dollars_per_degree": 60,
+        "side": "heat_hurt", "baseline_temp_f": 72, "dollars_per_degree": 60, "revenue_drop_pct_per_degree": 0.015,
         "keywords": {"ramen": 3, "pho": 3, "noodle": 2, "soup": 1, "hot pot": 3, "udon": 2, "tonkotsu": 2},
     },
     "hot_coffee_bakery": {
-        "side": "heat_hurt", "baseline_temp_f": 75, "dollars_per_degree": 30,
+        "side": "heat_hurt", "baseline_temp_f": 75, "dollars_per_degree": 30, "revenue_drop_pct_per_degree": 0.010,
         "keywords": {"hot coffee": 3, "espresso": 2, "bakery": 2, "latte": 1, "pastry": 1, "pastries": 1},
     },
     "perishable_shipper": {
-        "side": "heat_hurt", "baseline_temp_f": 80, "dollars_per_degree": 80,
+        "side": "heat_hurt", "baseline_temp_f": 80, "dollars_per_degree": 80, "revenue_drop_pct_per_degree": 0.020,
         "keywords": {"perishable shipping": 3, "meal kit": 3, "shipped cold": 3, "ice packs": 3, "perishable": 2},
     },
     "frozen_dessert": {
-        "side": "cold_hurt", "baseline_temp_f": 78, "dollars_per_degree": 50,
+        "side": "cold_hurt", "baseline_temp_f": 78, "dollars_per_degree": 50, "revenue_drop_pct_per_degree": 0.025,
         "keywords": {"ice cream": 3, "gelato": 3, "frozen yogurt": 3, "shaved ice": 3, "popsicle": 2, "sorbet": 1, "scoop": 1},
     },
     "cold_drinks": {
-        "side": "cold_hurt", "baseline_temp_f": 75, "dollars_per_degree": 40,
+        "side": "cold_hurt", "baseline_temp_f": 75, "dollars_per_degree": 40, "revenue_drop_pct_per_degree": 0.020,
         "keywords": {"boba": 3, "bubble tea": 3, "smoothie": 2, "cold brew": 2, "juice": 1, "iced": 1},
     },
 }
@@ -330,7 +332,7 @@ def pick_logo(brand):
     return logos[0]["url"] if logos and logos[0].get("url") else None
 
 
-def onboard(url, city_override=None):
+def onboard(url, city_override=None, annual_revenue=None):
     domain, url = normalize_domain(url)
     brand = get_brand(domain)
 
@@ -386,6 +388,10 @@ def onboard(url, city_override=None):
         distance = round(haversine_miles(lat, lon, best["lat"], best["lon"]), 1)
 
     sens = BUSINESS_TYPES[cls["business_type"]] if cls["business_type"] else {}
+    dollars_per_degree, dpd_source = sens.get("dollars_per_degree"), "default"
+    if annual_revenue and sens:
+        dollars_per_degree = round(annual_revenue / 365 * sens["revenue_drop_pct_per_degree"], 2)
+        dpd_source = "revenue"
     return {
         "domain": domain,
         "name": brand.get("title") or domain,
@@ -398,7 +404,9 @@ def onboard(url, city_override=None):
         "reason_codes": cls["reason_codes"],
         "business_type": cls["business_type"],
         "baseline_temp_f": sens.get("baseline_temp_f"),
-        "dollars_per_degree": sens.get("dollars_per_degree"),
+        "annual_revenue": annual_revenue,
+        "dollars_per_degree": dollars_per_degree,
+        "dollars_per_degree_source": dpd_source if sens else None,
         "gemini_city": gemini_city,
         "distance_miles": distance,
         "location_source": location_source,
@@ -421,12 +429,16 @@ def main():
     ap.add_argument("url")
     ap.add_argument("--refresh", action="store_true", help="bypass cache/")
     ap.add_argument("--city", help="override location, e.g. 'Los Angeles, CA' (for one branch of a chain)")
+    ap.add_argument("--annual-revenue", type=float, help="annual revenue in USD; scales dollars_per_degree")
     args = ap.parse_args()
     REFRESH = args.refresh
+    if args.annual_revenue is not None and args.annual_revenue <= 0:
+        log("error: --annual-revenue must be positive")
+        return 2
 
     start = time.time()
     try:
-        profile = onboard(args.url, args.city)
+        profile = onboard(args.url, args.city, args.annual_revenue)
         upsert(profile)
     except OnboardError as e:
         log(f"error: {e}")
