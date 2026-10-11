@@ -32,7 +32,7 @@ _Last updated 2026-10-11._
 | 7. `api.py` (FastAPI) | ✅ done | `.venv/bin/uvicorn api:app --port 8000`, then `curl localhost:8000/health` returns `{"mode":"mock","mm_running":true,…,"sandbox_ok":true}`. See endpoint notes below |
 | 8. Deploy backend to Railway | ✅ done | `curl https://api-production-2173.up.railway.app/health` returns `mode: mock, mm_running: true, sandbox_ok: true`. Railway project `weather-hedge`, service `api`; deploy with `cd backend && railway up --service api --ci`. Start command comes from the `RAILPACK_START_CMD` variable (railway.json alone was ignored) |
 | 9. Next.js frontend | ✅ done | `cd frontend && npm run dev -- -p 3005` with `NEXT_PUBLIC_API_URL`. One page: profile, market, hedge, scenario toggle, live sandbox panel |
-| 10. Deploy frontend to Vercel | next | |
+| 10. Deploy frontend to Vercel | ✅ done | **https://weather-hedge.vercel.app**. Deployed from the CLI, not linked to git: `cd frontend && npx vercel@latest deploy --prod --yes --build-env NEXT_PUBLIC_API_URL=https://api-production-2173.up.railway.app`. Railway `FRONTEND_ORIGINS` is set to the Vercel URL |
 | 11. Intake chat | not started (preset is enough for the demo) | |
 
 **Backend files so far**
