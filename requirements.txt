@@ -1,4 +1,0 @@
-# AI-generated with Claude (Anthropic). Pinned to releases >7 days old as of 2026-10-11.
-context.dev==2.23.0
-keyring==25.7.0
-requests==2.32.5

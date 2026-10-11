@@ -1,4 +1,9 @@
-# AI-generated with Claude (Anthropic).
-.venv/
-__pycache__/
 .env
+*.env
+backend/.env
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+.next/
+# backend/cache/ is committed on purpose: cached API responses for the demo (no secrets).
