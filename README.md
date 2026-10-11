@@ -49,3 +49,22 @@ Every Context.dev, Gemini, and Open-Meteo response is cached in `cache/`, keyed 
 ## Profile schema
 
 `domain, name, logo_url, address, lat, lon, side, confidence, reason_codes, business_type, baseline_temp_f, annual_revenue, dollars_per_degree, dollars_per_degree_source, gemini_city, distance_miles, location_source, menu_url, onboarded_at`
+
+# Hedging: `hedge.py`
+
+```bash
+.venv/bin/python hedge.py                                  # Los Angeles, latest open market
+.venv/bin/python hedge.py --city "Los Angeles" --date 2026-10-11
+```
+
+Reads `data/businesses.json`, writes a plan to `data/hedge_plans.json` (upsert by city + date), prints it as JSON.
+
+**Model.** Each business's daily profit is linear in the day's high: heat_hurt loses `dollars_per_degree` per °F above baseline and gains below; cold_hurt is the mirror. Summing a city's businesses cancels opposite exposures, leaving `net_dollars_per_degree`.
+
+**Odds.** Gemini weather markets are thin; most buckets have no quote. Bucket probabilities come from the Open-Meteo GFS ensemble (31 members) at the station. `price` is the market ask when quoted, else the model probability (`price_source` says which). `edge` = model probability minus price.
+
+**Hedge.** For each bucket where the pool does worse than its expected P&L, buy YES contracts ($1 payout) to cover the shortfall. `hedge_cost_standalone` is the cost if each business hedged alone; `netting_savings` is the difference.
+
+**Backtest.** Last 365 days of daily highs (Open-Meteo archive) at the station: daily P&L spread and worst day, unhedged vs hedged at fair price.
+
+**Limits.** Forecast and history are gridded model data, not the NWS station report Gemini settles on. Unquoted buckets can't actually be bought at the model price. Backtest assumes fair-price hedges with no spread.
