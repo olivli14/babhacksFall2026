@@ -35,7 +35,8 @@ except mb.MockOrderError as e:
 mb.place_order("shop", S, "sell", "yes", 0.30, 2)
 assert mb.get_book(S)["bids"] == [(0.30, 8)]
 assert mb.get_positions("shop")[0]["totalQuantity"] == "2"
-print("4. shop sells 2 YES into mm bid; shop now holds 2")
+assert mb.get_positions("mm") == [{"symbol": S, "outcome": "no", "totalQuantity": "2", "avgPrice": "0.6400"}], mb.get_positions("mm")
+print("4. shop sells 2 YES into mm bid; shop holds 2 YES; mm's 4 NO + 2 YES net to 2 NO")
 
 # Cancel.
 mb.cancel_order("mm", ask)
@@ -46,6 +47,12 @@ print("5. cancel mm ask; active mm orders:", [o["orderId"] for o in mb.get_activ
 mb.place_order("mm", S, "buy", "no", 0.75, 1)  # YES ask @0.25 crosses own bid @0.30
 assert bid not in [o["orderId"] for o in mb.get_active_orders("mm")]
 print("6. self-trade prevented; book:", mb.get_book(S))
+
+# Netting: mm holds 2 NO; buying the shop's last 2 YES nets the mm to flat.
+mb.place_order("shop", S, "sell", "yes", 0.40, 2)
+mb.place_order("mm", S, "buy", "yes", 0.40, 2)
+assert mb.get_positions("mm") == [] and mb.get_positions("shop") == []
+print("6b. netting: mm 2 NO + 2 YES -> flat; shop flat")
 
 print(f"7. trades: {len(mb.get_trades())}, cash mm={mb.get_cash('mm'):.2f} shop={mb.get_cash('shop'):.2f}")
 
