@@ -1,0 +1,76 @@
+[
+  {
+    "domain": "dkramen.com",
+    "name": "Daikokuya",
+    "logo_url": "https://media.brand.dev/7b44aa22-01bd-4fa7-9c7f-e05a8a18d6d5.png",
+    "address": "Los Angeles, CA",
+    "lat": 34.05223,
+    "lon": -118.24368,
+    "side": "heat_hurt",
+    "confidence": 1.0,
+    "reason_codes": [
+      "ramen x57",
+      "noodle x6",
+      "soup x2"
+    ],
+    "business_type": "noodle_soup",
+    "baseline_temp_f": 72,
+    "annual_revenue": 1500000.0,
+    "dollars_per_degree": 61.64,
+    "dollars_per_degree_source": "revenue",
+    "gemini_city": "Los Angeles",
+    "distance_miles": 12.1,
+    "location_source": "site_text",
+    "menu_url": null,
+    "onboarded_at": "2026-10-11T20:40:31+00:00"
+  },
+  {
+    "domain": "gget.com",
+    "name": "Go Get Em Tiger",
+    "logo_url": "https://media.brand.dev/673cdfe8-44c3-4317-ac62-2a5b0672f626.png",
+    "address": "Los Angeles, CA",
+    "lat": 34.05223,
+    "lon": -118.24368,
+    "side": "heat_hurt",
+    "confidence": 0.867,
+    "reason_codes": [
+      "espresso x6",
+      "latte x2",
+      "pastries x1"
+    ],
+    "business_type": "hot_coffee_bakery",
+    "baseline_temp_f": 75,
+    "annual_revenue": null,
+    "dollars_per_degree": 30,
+    "dollars_per_degree_source": "default",
+    "gemini_city": "Los Angeles",
+    "distance_miles": 12.1,
+    "location_source": "site_text",
+    "menu_url": "https://gget.com/collections/current-menu",
+    "onboarded_at": "2026-10-11T21:20:51+00:00"
+  },
+  {
+    "domain": "wanderlustcreamery.com",
+    "name": "Wanderlust Creamery",
+    "logo_url": "https://media.brand.dev/7ce6f171-90fb-4006-b9ea-14d302eca4c1.png",
+    "address": "Los Angeles, CA",
+    "lat": 34.05223,
+    "lon": -118.24368,
+    "side": "cold_hurt",
+    "confidence": 1.0,
+    "reason_codes": [
+      "ice cream x47",
+      "boba x2",
+      "scoop x5",
+      "sorbet x2"
+    ],
+    "business_type": "frozen_dessert",
+    "baseline_temp_f": 78,
+    "dollars_per_degree": 50,
+    "gemini_city": "Los Angeles",
+    "distance_miles": 12.1,
+    "location_source": "cli",
+    "menu_url": "https://wanderlustcreamery.com/menu",
+    "onboarded_at": "2026-10-11T20:24:01+00:00"
+  }
+]

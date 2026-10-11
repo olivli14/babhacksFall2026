@@ -230,3 +230,14 @@ After each step, give me a short way to test it (a command and its expected outp
 - No secrets in code, logs or commits.
 - When something about the API is uncertain, check the docs or ask me rather than assuming.
 - Don't touch `forecast.py` beyond the stub unless I ask.
+
+## Satya's modules (merged 2026-10-11)
+
+<!-- AI-generated with Claude (Anthropic). -->
+In `backend/`. See the README section "Onboarding, pooling, and hedge sizing".
+- `onboard.py <url> [--city "City, ST"] [--annual-revenue USD]`: website → exposure profile (Context.dev brand + scrape, keyword classifier heat_hurt/cold_hurt/needs_review, nearest Gemini city). `run()` is the function an API route should call.
+- `hedge.py [--city "Los Angeles"] [--date YYYY-MM-DD]`: pools a city's businesses, nets opposite exposures, sizes YES contracts per bucket from the Open-Meteo GFS ensemble (31 members), backtests the last year. Writes 5 years of daily highs.
+- `db.py`: Supabase over REST. Tables in `supabase/schema.sql`: `business_inputs` (raw form input), `businesses`, `weather_daily`, `hedge_plans`.
+- Keys for these modules are in the OS keychain via `keyring`, not `.env`: `contextdev`/`api_key`, `supabase`/`secret_key`.
+- `cache/` is committed so the three demo businesses (dkramen.com, gget.com, wanderlustcreamery.com) run offline without keys.
+- The ensemble in `hedge.py` (`ensemble_highs`) is the natural source for the real `forecast.prob_above`.
