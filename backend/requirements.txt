@@ -1,5 +1,7 @@
-requests
-python-dotenv
+requests==2.34.2
+python-dotenv==1.2.4
+fastapi==0.143.0
+uvicorn==0.54.0
 # Onboarding/hedging (AI-generated with Claude). Pinned to releases >7 days old as of 2026-10-11.
 context.dev==2.23.0
 keyring==25.7.0

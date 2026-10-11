@@ -27,14 +27,24 @@ _Last updated 2026-10-11._
 | 3. `gemini_client.py` | ✅ done | `.venv/bin/python scripts/test_client.py`: places, cancels and fills a real 1-contract trade between `mm` and `shop` on a sandbox crypto contract |
 | 4. `mock_book.py` + `market.py` | ✅ done | `.venv/bin/python scripts/test_mock_book.py` ends with `ALL MOCK BOOK CHECKS PASSED` |
 | 5. `forecast.py` stub | ✅ done (stub) | `.venv/bin/python -c "from forecast import prob_above; print(prob_above('NYC', 66, '2026-10-12'))"` prints ~0.5. Normal curve around a fixed 66°F mean (sd 5°F, small jitter); location and date are ignored. **Teammate replaces it.** |
-| 6. `mm_agent.py`, `shop_agent.py` | next | |
-| 7–11 | not started | |
+| 6. `mm_agent.py`, `shop_agent.py`, `contracts.py` | ✅ done (branch `agents`) | `MODE=mock .venv/bin/python mm_agent.py` prints bid/ask for all 6 NYC buckets. `MODE=mock .venv/bin/python shop_agent.py` prints a recommendation, 3 filled orders, and hot/cold scenarios |
+| 6b. Live sandbox run of both agents | ✅ done | `.venv/bin/python scripts/live_demo.py 300`: real `MarketMaker` + shop sizing on a sandbox crypto contract for 300 s, then cancels everything. Fair value = mid of other traders' quotes |
+| 7. `api.py` (FastAPI) | ✅ done | `.venv/bin/uvicorn api:app --port 8000`, then `curl localhost:8000/health` returns `{"mode":"mock","mm_running":true,…,"sandbox_ok":true}`. See endpoint notes below |
+| 8. Deploy backend to Railway | ✅ done | `curl https://api-production-2173.up.railway.app/health` returns `mode: mock, mm_running: true, sandbox_ok: true`. Railway project `weather-hedge`, service `api`; deploy with `cd backend && railway up --service api --ci`. Start command comes from the `RAILPACK_START_CMD` variable (railway.json alone was ignored) |
+| 9. Next.js frontend | ✅ done | `cd frontend && npm run dev -- -p 3005` with `NEXT_PUBLIC_API_URL`. One page: profile, market, hedge, scenario toggle, live sandbox panel |
+| 10. Deploy frontend to Vercel | ✅ done | **https://weather-hedge.vercel.app**. Deployed from the CLI, not linked to git: `cd frontend && npx vercel@latest deploy --prod --yes --build-env NEXT_PUBLIC_API_URL=https://api-production-2173.up.railway.app`. Railway `FRONTEND_ORIGINS` is set to the Vercel URL |
+| 11. Intake chat | not started (preset is enough for the demo) | |
 
 **Backend files so far**
 - `config.py`: loads `backend/.env` (template in `backend/.env.example`). Holds `MODE` and per-agent credentials.
 - `gemini_auth.py`: `private(account, path, fields, method)` signs and sends private REST calls.
 - `gemini_client.py`: the real sandbox implementation of the interface below.
 - `mock_book.py`: the in-memory implementation of the same interface, with matching, positions and cash. It also has mock-only helpers: `get_trades()`, `get_cash()` and `reset()`.
+- `contracts.py`: parses weather tickers (`LO68`, `69TO70`, `HI77`), `fair_value(symbol)` from `prob_above`, and finds a city's event. **Teammate: this is where forecast probabilities become contract prices.**
+- `mm_agent.py`: `MarketMaker(symbols, MMConfig)` quotes every bucket of an event. `step()` runs one round; `start()`/`stop()` run it in a background thread. Pricing knobs are in `MMConfig`; the quote logic is in `quote()`.
+- `shop_agent.py`: `recommend(profile)`, `execute(rec)`, `scenario(profile, rec, temp_f)`, and `ICE_CREAM_PRESET`. It buys a **strip**: YES on every bucket where the business loses money, each sized to that bucket's loss and scaled down evenly to fit the premium budget.
+- `live.py`: `LiveRun` runs both agents on the real sandbox (used by `/live/start` and `scripts/live_demo.py`). The live market maker's fair value is the **production** mid for the same symbol, because every sandbox contract is also listed on production and sandbox books are usually empty. `cancel_all_open()` clears orders left behind by a crash; the API calls it on startup.
+- `api.py`: the FastAPI app. The market maker quotes every bucket of the preset city's event from startup.
 - **`market.py`: what agents should import** (`import market`). It re-exports either `gemini_client` or `mock_book` depending on `MODE`.
 
 ### What we learned (these override anything below that disagrees)
@@ -45,7 +55,10 @@ _Last updated 2026-10-11._
 5. **Order books are in YES space.** `get_book` returns YES bids and asks. A NO buy at q appears as a YES ask at 1-q.
 6. Both API keys are **master keys**, and the sandbox requires an explicit `"account": "primary"` in every private payload (the docs say it's optional; it isn't). `config.py` adds it automatically. Each sandbox group is capped at 1 account, so the two agents use two separate sandbox logins.
 7. Production book liquidity on weather contracts is thin (often no bid or ask), so don't rely on it for fair value.
-8. Gemini docs are available as markdown: `https://developer.gemini.com/llms.txt`. The OpenAPI spec is at `https://developer.gemini.com/specs/openapi/prediction-markets.yaml`.
+8. **Gemini nets YES against NO** in the same account (a YES+NO pair redeems for $1). So positions show only the net side. `mock_book` does the same.
+9. **Live run (2026-10-11, 5 min):** the shop's YES buy matched the market maker's ask on the sandbox. But a sandbox bot kept selling into the market maker's bid, and with `max_skew=0.03` it built up 50 YES. **Pricing to-do for teammate:** stronger inventory skew, an inventory limit, or stopping the bid past a max position.
+10. **Sandbox liquidity comes and goes.** Bots quote only the contracts expiring within about the hour; later contracts have empty books. Every sandbox symbol also exists on production with real prices, so we price off production.
+11. Gemini docs are available as markdown: `https://developer.gemini.com/llms.txt`. The OpenAPI spec is at `https://developer.gemini.com/specs/openapi/prediction-markets.yaml`.
 
 ## Stack and repo layout
 
@@ -163,7 +176,17 @@ GET  /scenarios       ?profile_id=     -> {hot: {...}, cold: {...}}  # revenue, 
 GET  /health                           -> {mode, mm_running, sandbox_ok}
 ```
 
-- Enable CORS for the Vercel domain and localhost only.
+- Enable CORS for the Vercel domain and localhost only. (Done: `localhost:3000` plus the comma-separated `FRONTEND_ORIGINS` env var.)
+
+**As built:**
+- `/hedge` also returns `profile_id`, which `/scenarios` needs.
+- `/market` without `symbol` returns every bucket as `contracts: [{symbol, bucket, lo, hi, fair_value, book, mm_quotes}]`.
+- Extra endpoints:
+  - `GET /presets` returns the ice cream profile.
+  - `GET /live` returns the live sandbox run's status and log. It's public.
+  - `POST /live/start {seconds}` and `POST /live/stop` require the header `X-Demo-Admin-Token: $DEMO_ADMIN_TOKEN`.
+- `/intake` is a placeholder until step 11.
+- Validation: `premium_budget` ≤ $1000 and any single order ≤ 2000 contracts.
 - Every response includes `mode: "sandbox" | "mock"` so the UI can label it.
 
 **Frontend (`/frontend`, Next.js), a single page:**
