@@ -1,34 +1,35 @@
-/* AI-generated with Claude (Anthropic). Design tokens for Steady. */
+/* AI-generated with Claude (Anthropic). Design tokens for the app: editorial, paper and ink. */
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-sans: var(--font-grotesk), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: var(--font-display), Georgia, "Times New Roman", serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
 
-  /* Ink and surfaces (warm neutrals) */
-  --color-ink: #0b0b0b;
-  --color-ink-2: #52514e;
-  --color-muted: #898781;
-  --color-line: #e7e6e1;
-  --color-line-strong: #c3c2b7;
-  --color-page: #f7f7f5;
-  --color-card: #ffffff;
-  --color-wash: #f2f1ee;
+  /* Paper and ink */
+  --color-page: #f3efe6;
+  --color-card: #faf8f3;
+  --color-wash: #e9e3d6;
+  --color-line: #dbd3c3;
+  --color-line-strong: #b5ab96;
+  --color-ink: #1b1a17;
+  --color-ink-2: #4c4840;
+  --color-muted: #857e6f;
 
-  /* Brand: violet. Validated with cold/heat for CVD + contrast on white. */
-  --color-brand: #4a3aa7;
-  --color-brand-ink: #3a2d86;
-  --color-brand-wash: #efedf9;
+  /* Ink is the brand. Hedged series and primary actions use it. */
+  --color-brand: #1b1a17;
+  --color-brand-ink: #000000;
+  --color-brand-wash: #e4ddcd;
 
-  /* Weather semantics */
-  --color-cold: #2a78d6;
-  --color-cold-wash: #e8f1fc;
-  --color-heat: #eb6834;
-  --color-heat-wash: #fdeee7;
+  /* Weather semantics. Validated together on the paper surface (CVD + contrast). */
+  --color-cold: #2463b8;
+  --color-cold-wash: #dde6f1;
+  --color-heat: #d9541e;
+  --color-heat-wash: #f5dfd3;
 
-  /* Status (never used as a series color) */
-  --color-good: #006300;
-  --color-bad: #c23b3b;
+  /* Status */
+  --color-good: #2f6b2f;
+  --color-bad: #b23a2a;
 }
 
 :root {
@@ -39,18 +40,33 @@ body {
   background: var(--color-page);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  font-feature-settings: "ss01";
   -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: #1b1a17;
+  color: #f3efe6;
 }
 
 .tabular {
   font-variant-numeric: tabular-nums;
 }
 
+/* Serif display numbers and headlines */
+.display {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
 /* Recharts: keep chrome recessive */
 .recharts-cartesian-axis-tick-value {
   fill: var(--color-muted);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
-.recharts-cartesian-grid-horizontal line {
-  stroke: var(--color-line);
+
+input[type="range"] {
+  accent-color: var(--color-ink);
 }

@@ -1,11 +1,11 @@
 // AI-generated with Claude (Anthropic).
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Instrument_Serif, Schibsted_Grotesk } from "next/font/google";
 import { BRAND } from "@/lib/brand";
 import "./globals.css";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const display = Instrument_Serif({ variable: "--font-display", subsets: ["latin"], weight: "400", style: ["normal", "italic"] });
+const grotesk = Schibsted_Grotesk({ variable: "--font-grotesk", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: `${BRAND} · Weather hedging for small businesses`,
@@ -14,8 +14,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>{children}</body>
+    <html lang="en" className={`${display.variable} ${grotesk.variable}`}>
+      <body>{children}</body>
     </html>
   );
 }

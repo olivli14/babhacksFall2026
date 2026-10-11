@@ -5,59 +5,59 @@ import { Side, sideLabel } from "@/lib/api";
 
 export function Wordmark({ href = "/" }: { href?: string }) {
   return (
-    <Link href={href} className="inline-flex items-center gap-2.5 text-ink">
-      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden>
-        <rect width="22" height="22" rx="6" fill="var(--color-brand)" />
-        <path d="M5 13.5c2-3 4-3 6 0s4 3 6 0" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" />
+    <Link href={href} className="group inline-flex items-baseline gap-2 text-ink">
+      <span className="display text-[28px] leading-none">{BRAND}</span>
+      <svg width="26" height="8" viewBox="0 0 26 8" aria-hidden className="translate-y-[-2px]">
+        <path d="M1 4c4-4 8-4 12 0s8 4 12 0" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
       </svg>
-      <span className="text-[17px] font-semibold tracking-tight">{BRAND}</span>
     </Link>
   );
 }
 
-export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+/** A ruled section: numbered label column on the left, content on the right. */
+export function Section({
+  n, title, note, children, aside, dim,
+}: {
+  n: string; title: React.ReactNode; note?: React.ReactNode; children: React.ReactNode;
+  aside?: React.ReactNode; dim?: boolean;
+}) {
   return (
-    <section className={`rounded-2xl border border-line bg-card ${className}`}>{children}</section>
+    <section className={`grid gap-x-14 gap-y-6 border-t border-ink pb-16 pt-5 lg:grid-cols-[250px_1fr] ${dim ? "opacity-60 transition-opacity" : "transition-opacity"}`}>
+      <header>
+        <p className="tabular text-[13px] text-muted">{n}</p>
+        <h2 className="display mt-2 text-[30px] leading-[1.08] text-ink">{title}</h2>
+        {note && <p className="mt-3 text-[14px] leading-relaxed text-ink-2">{note}</p>}
+        {aside && <div className="mt-5">{aside}</div>}
+      </header>
+      <div className="min-w-0">{children}</div>
+    </section>
   );
 }
 
-export function SectionHead({
-  eyebrow, title, sub, right,
-}: { eyebrow?: string; title: string; sub?: React.ReactNode; right?: React.ReactNode }) {
-  return (
-    <div className="flex flex-wrap items-end justify-between gap-4 px-6 pt-6 pb-4 sm:px-8 sm:pt-7">
-      <div className="max-w-2xl">
-        {eyebrow && <p className="mb-1.5 text-xs font-medium uppercase tracking-[0.08em] text-muted">{eyebrow}</p>}
-        <h2 className="text-lg font-semibold tracking-tight text-ink">{title}</h2>
-        {sub && <p className="mt-1 text-sm leading-relaxed text-ink-2">{sub}</p>}
-      </div>
-      {right}
-    </div>
-  );
+/** A quiet container for grouped content inside a section. */
+export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <div className={`rounded-[3px] border border-line bg-card ${className}`}>{children}</div>;
 }
 
 export function Stat({
   label, value, note, tone = "ink",
-}: { label: string; value: React.ReactNode; note?: React.ReactNode; tone?: "ink" | "brand" }) {
+}: { label: string; value: React.ReactNode; note?: React.ReactNode; tone?: "ink" | "heat" | "cold" }) {
+  const color = tone === "heat" ? "text-heat" : tone === "cold" ? "text-cold" : "text-ink";
   return (
     <div className="min-w-0">
       <p className="text-[13px] text-ink-2">{label}</p>
-      <p className={`mt-1.5 text-[28px] font-semibold leading-none tracking-tight ${tone === "brand" ? "text-brand" : "text-ink"}`}>
-        {value}
-      </p>
-      {note && <p className="mt-2 text-[13px] leading-snug text-muted">{note}</p>}
+      <p className={`display tabular mt-1 text-[44px] leading-none ${color}`}>{value}</p>
+      {note && <p className="mt-2.5 text-[13px] leading-snug text-muted">{note}</p>}
     </div>
   );
 }
 
 export function SideBadge({ side }: { side: Side }) {
-  const style =
-    side === "heat_hurt" ? "bg-heat-wash text-[#9a3a12]" :
-    side === "cold_hurt" ? "bg-cold-wash text-[#1c5cab]" : "bg-wash text-ink-2";
-  const dot = side === "heat_hurt" ? "bg-heat" : side === "cold_hurt" ? "bg-cold" : "bg-muted";
+  const color = side === "heat_hurt" ? "text-heat" : side === "cold_hurt" ? "text-cold" : "text-muted";
+  const mark = side === "heat_hurt" ? "bg-heat" : side === "cold_hurt" ? "bg-cold" : "bg-muted";
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${style}`}>
-      <span className={`size-1.5 rounded-full ${dot}`} />
+    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-medium ${color}`}>
+      <span className={`size-2 ${mark}`} />
       {sideLabel[side]}
     </span>
   );
@@ -67,15 +67,15 @@ export function Segmented<T extends string | number>({
   options, value, onChange, label,
 }: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void; label: string }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-lg bg-wash p-0.5">
+    <div role="radiogroup" aria-label={label} className="inline-flex gap-4 text-[13px]">
       {options.map((o) => (
         <button
           key={o.value}
           role="radio"
           aria-checked={o.value === value}
           onClick={() => onChange(o.value)}
-          className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors ${
-            o.value === value ? "bg-card text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-2 hover:text-ink"
+          className={`border-b pb-0.5 transition-colors ${
+            o.value === value ? "border-ink font-medium text-ink" : "border-transparent text-muted hover:text-ink"
           }`}
         >
           {o.label}
@@ -95,4 +95,24 @@ export function LegendItem({ color, label, dashed }: { color: string; label: str
       {label}
     </span>
   );
+}
+
+export function Swatch({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-2 text-[13px] text-ink-2">
+      <span className="size-2.5" style={{ background: color }} />
+      {label}
+    </span>
+  );
+}
+
+export function Button({ children, onClick, disabled, variant = "solid", type = "button", className = "" }: {
+  children: React.ReactNode; onClick?: () => void; disabled?: boolean; variant?: "solid" | "outline";
+  type?: "button" | "submit"; className?: string;
+}) {
+  const base = "inline-flex items-center justify-center gap-2 rounded-[3px] px-4 py-2.5 text-[14px] font-medium transition-colors disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
+  const look = variant === "solid"
+    ? "bg-ink text-page hover:bg-black"
+    : "border border-ink text-ink hover:bg-ink hover:text-page";
+  return <button type={type} onClick={onClick} disabled={disabled} className={`${base} ${look} ${className}`}>{children}</button>;
 }

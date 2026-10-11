@@ -7,9 +7,9 @@ import {
 } from "recharts";
 import { Bucket, Dashboard, Side, shortDate, usd, usdSigned } from "@/lib/api";
 
-const C = {
-  ink: "#0b0b0b", ink2: "#52514e", muted: "#898781", line: "#e7e6e1", base: "#c3c2b7",
-  brand: "#4a3aa7", cold: "#2a78d6", heat: "#eb6834", prior: "#bdbcb4",
+export const C = {
+  ink: "#1b1a17", ink2: "#4c4840", muted: "#857e6f", line: "#dbd3c3", base: "#b5ab96",
+  brand: "#1b1a17", cold: "#2463b8", heat: "#d9541e", prior: "#cdc4b0",
 };
 
 /* ---------- Tomorrow's forecast: one bar per Gemini bucket ---------- */
@@ -25,8 +25,8 @@ export function ForecastBars({ buckets, side, baseline }: { buckets: Bucket[]; s
           <li key={b.label} className="group grid grid-cols-[112px_1fr_88px] items-center gap-4 text-[13px]"
               title={`${b.label}: ${Math.round(b.model_prob * 100)}% chance${b.market_price != null ? `, market ${Math.round(b.market_price * 100)}¢` : ""}`}>
             <span className="tabular text-ink-2">{b.label.replace("°F to ", "–").replace(" or below", " or less").replace(" or above", "+")}</span>
-            <span className="relative h-6 rounded-[4px] bg-wash">
-              <span className="absolute inset-y-0 left-0 rounded-[4px] transition-[width] duration-500"
+            <span className="relative h-6 rounded-[2px] bg-wash">
+              <span className="absolute inset-y-0 left-0 rounded-[2px] transition-[width] duration-500"
                     style={{ width: `${(b.model_prob / max) * 100}%`, background: hurts(b) ? hurtColor : C.prior }} />
               {b.market_price != null && (
                 <span className="absolute -inset-y-1 w-0.5 rounded bg-ink" style={{ left: `${Math.min(b.market_price / max, 1) * 100}%` }}
@@ -38,8 +38,8 @@ export function ForecastBars({ buckets, side, baseline }: { buckets: Bucket[]; s
         ))}
       </ul>
       <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-ink-2">
-        <span className="inline-flex items-center gap-2"><span className="size-2.5 rounded-sm" style={{ background: hurtColor }} />Costs you money</span>
-        <span className="inline-flex items-center gap-2"><span className="size-2.5 rounded-sm" style={{ background: C.prior }} />Normal or better</span>
+        <span className="inline-flex items-center gap-2"><span className="size-2.5" style={{ background: hurtColor }} />Costs you money</span>
+        <span className="inline-flex items-center gap-2"><span className="size-2.5" style={{ background: C.prior }} />Normal or better</span>
         {buckets.some((b) => b.market_price != null) && (
           <span className="inline-flex items-center gap-2"><span className="h-3 w-0.5 rounded bg-ink" />Gemini market price</span>
         )}
@@ -79,7 +79,7 @@ export function HistoryChart({ rows, baseline, side }: {
         <YAxis tickFormatter={(v) => `${Math.round(v)}°`} tickLine={false} axisLine={false} width={44}
                domain={[(min: number) => Math.floor(min / 5) * 5 - 5, (max: number) => Math.ceil(max / 5) * 5 + 5]} />
         <Tooltip content={<HistoryTip />} cursor={{ stroke: C.base, strokeWidth: 1 }} />
-        <Area dataKey="range" stroke="none" fill={C.prior} fillOpacity={0.35} isAnimationActive={false} activeDot={false} />
+        <Area dataKey="range" stroke="none" fill={C.prior} fillOpacity={0.55} isAnimationActive={false} activeDot={false} />
         <Line dataKey="normal" stroke={C.muted} strokeWidth={1} dot={false} isAnimationActive={false} activeDot={false} />
         {baseline != null && <ReferenceLine y={baseline} stroke={C.ink2} strokeDasharray="4 4" />}
         <Line dataKey="now" stroke={lineColor} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: "#fff" }} connectNulls />
@@ -92,7 +92,7 @@ function HistoryTip({ active, payload }: { active?: boolean; payload?: { payload
   if (!active || !payload?.length) return null;
   const r = payload[0].payload;
   return (
-    <div className="rounded-lg border border-line bg-card px-3 py-2.5 text-[13px] shadow-sm">
+    <div className="rounded-[3px] border border-ink bg-card px-3 py-2.5 text-[13px]">
       <p className="mb-1.5 font-medium text-ink">{shortDate(r.date)}</p>
       {r.now != null && <p className="tabular flex justify-between gap-6"><span className="text-ink">High</span><span className="font-medium text-ink">{r.now.toFixed(0)}°F</span></p>}
       {r.normal != null && <p className="tabular flex justify-between gap-6"><span className="text-ink-2">Normal</span><span className="text-ink-2">{r.normal.toFixed(0)}°F</span></p>}
@@ -129,11 +129,11 @@ function PnlTip({ active, payload }: { active?: boolean; payload?: { payload: Da
   if (!active || !payload?.length) return null;
   const r = payload[0].payload;
   return (
-    <div className="rounded-lg border border-line bg-card px-3 py-2.5 text-[13px] shadow-sm">
+    <div className="rounded-[3px] border border-ink bg-card px-3 py-2.5 text-[13px]">
       <p className="font-medium text-ink">{shortDate(r.date)}</p>
       <p className="mb-1.5 text-muted">High {r.high_f.toFixed(0)}°F · normal {r.normal_high_f.toFixed(0)}°F</p>
       <p className="tabular flex justify-between gap-6"><span className="text-ink-2">Without hedge</span><span className="text-ink">{usdSigned(r.unhedged)}</span></p>
-      <p className="tabular flex justify-between gap-6"><span className="text-ink-2">With hedge</span><span className="font-medium text-brand">{usdSigned(r.hedged)}</span></p>
+      <p className="tabular flex justify-between gap-6"><span className="text-ink-2">With hedge</span><span className="font-medium text-ink">{usdSigned(r.hedged)}</span></p>
     </div>
   );
 }
@@ -151,8 +151,8 @@ export function CostCompare({ alone, pooled }: { alone: number; pooled: number }
       {rows.map((r) => (
         <li key={r.label} className="grid grid-cols-[104px_1fr_72px] items-center gap-4 text-[13px]">
           <span className="text-ink-2">{r.label}</span>
-          <span className="h-7 rounded-[4px] bg-wash">
-            <span className="block h-full rounded-[4px] transition-[width] duration-500" style={{ width: `${(r.value / max) * 100}%`, background: r.color }} />
+          <span className="h-7 rounded-[2px] bg-wash">
+            <span className="block h-full rounded-[2px] transition-[width] duration-500" style={{ width: `${(r.value / max) * 100}%`, background: r.color }} />
           </span>
           <span className={`tabular text-right font-medium ${r.ink}`}>{usd(r.value, 2)}</span>
         </li>
@@ -173,8 +173,8 @@ export function SimHistogram({ bins }: { bins: { from: number; to: number; hedge
         <YAxis tickLine={false} axisLine={false} width={44} allowDecimals={false} />
         <Tooltip content={<SimTip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
         <ReferenceLine x={data.reduce((best, b) => (Math.abs(b.mid) < Math.abs(best.mid) ? b : best), data[0]).mid} stroke={C.base} strokeDasharray="3 3" />
-        <Bar dataKey="unhedged" fill={C.prior} radius={[4, 4, 0, 0]} isAnimationActive={false} />
-        <Bar dataKey="hedged" fill={C.brand} radius={[4, 4, 0, 0]} />
+        <Bar dataKey="unhedged" fill={C.prior} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+        <Bar dataKey="hedged" fill={C.brand} radius={[2, 2, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -184,10 +184,10 @@ function SimTip({ active, payload }: { active?: boolean; payload?: { payload: { 
   if (!active || !payload?.length) return null;
   const r = payload[0].payload;
   return (
-    <div className="rounded-lg border border-line bg-card px-3 py-2.5 text-[13px] shadow-sm">
+    <div className="rounded-[3px] border border-ink bg-card px-3 py-2.5 text-[13px]">
       <p className="mb-1.5 font-medium text-ink">{usd(r.from)} to {usd(r.to)}</p>
       <p className="tabular flex justify-between gap-6"><span className="text-ink-2">Without hedge</span><span className="text-ink">{r.unhedged} days</span></p>
-      <p className="tabular flex justify-between gap-6"><span className="text-ink-2">With hedge</span><span className="font-medium text-brand">{r.hedged} days</span></p>
+      <p className="tabular flex justify-between gap-6"><span className="text-ink-2">With hedge</span><span className="font-medium text-ink">{r.hedged} days</span></p>
     </div>
   );
 }

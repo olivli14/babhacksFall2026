@@ -5,17 +5,17 @@ import { useEffect, useRef, useState } from "react";
 import {
   ExecuteResult, LiveStatus, PoolMarket, executePool, getLive, getPoolMarket, startLive, strikeLabel, usd,
 } from "@/lib/api";
-import { Card, SectionHead } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
 
 const WHO: Record<string, string> = { shop: "Pool agent", mm: "Market maker" };
 
 export function ModeBadge({ live }: { live?: boolean }) {
   return live ? (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e6f4e6] px-2.5 py-1 text-xs font-medium text-good">
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-medium text-good">
       <span className="size-1.5 animate-pulse rounded-full bg-good" />Live on Gemini sandbox
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-wash px-2.5 py-1 text-xs font-medium text-ink-2">
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] text-muted">
       Simulated exchange · real Gemini contracts
     </span>
   );
@@ -66,11 +66,8 @@ export function AgentsCard({ domain }: { domain: string }) {
   }
 
   return (
-    <Card>
-      <SectionHead eyebrow="Agents in action" title="The pool buys its hedge from a market maker"
-                   sub="Two AI agents trade Gemini's real contracts for tomorrow. The market maker prices every range from the forecast and quotes both sides. The pool's agent buys the ranges that protect the pool."
-                   right={<ModeBadge />} />
-      <div className="grid gap-8 px-6 pb-7 sm:px-8 lg:grid-cols-[1.2fr_1fr]">
+    <div>
+      <div className="grid gap-10 xl:grid-cols-[1.2fr_1fr]">
         <div>
           <table className="w-full text-[13px]">
             <thead className="text-left text-muted">
@@ -104,10 +101,9 @@ export function AgentsCard({ domain }: { domain: string }) {
         </div>
 
         <div className="flex flex-col">
-          <button onClick={buy} disabled={busy || !m}
-                  className="rounded-xl bg-brand px-4 py-3 text-[15px] font-medium text-white transition-colors hover:bg-brand-ink disabled:opacity-50">
+          <Button onClick={buy} disabled={busy || !m} className="w-full py-3">
             {busy ? "Placing orders…" : "Buy the pool's hedge"}
-          </button>
+          </Button>
           {result && (
             <p className="mt-3 text-[13px] text-ink-2">
               {result.orders.filter((o) => o.status === "filled").length} of {result.orders.length} orders filled for{" "}
@@ -118,7 +114,7 @@ export function AgentsCard({ domain }: { domain: string }) {
           <ul className="mt-2 max-h-56 flex-1 space-y-2 overflow-auto">
             {(m?.fills ?? []).length === 0 && <li className="text-[13px] text-muted">No trades yet for this market.</li>}
             {(m?.fills ?? []).map((f, i) => (
-              <li key={`${f.time}-${i}`} className="rounded-lg bg-wash px-3 py-2 text-[13px] text-ink-2">
+              <li key={`${f.time}-${i}`} className="border-b border-line pb-2 text-[13px] text-ink-2">
                 <span className="tabular text-muted">{new Date(f.time * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>{" "}
                 <span className="text-ink">{WHO[f.yes_buyer] ?? f.yes_buyer}</span> bought{" "}
                 <span className="tabular font-medium text-ink">{f.qty.toLocaleString()} × {strikeLabel(f.bucket)}</span> from{" "}
@@ -128,8 +124,8 @@ export function AgentsCard({ domain }: { domain: string }) {
           </ul>
         </div>
       </div>
-      <LivePanel />
-    </Card>
+      <Card className="mt-10"><LivePanel /></Card>
+    </div>
   );
 }
 
@@ -156,10 +152,10 @@ function LivePanel() {
   }
 
   return (
-    <details className="group border-t border-line">
+    <details className="group">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-4 sm:px-8">
         <span>
-          <span className="block text-[14px] font-medium">Same agents, real Gemini orders</span>
+          <span className="block text-[15px] font-medium">Same agents, real Gemini orders</span>
           <span className="block text-[13px] text-ink-2">Gemini&apos;s sandbox has no weather markets yet, so this runs the agents on a live sandbox contract.</span>
         </span>
         <span className="flex items-center gap-3">
@@ -171,14 +167,13 @@ function LivePanel() {
         <div className="flex flex-wrap gap-2">
           <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Admin token"
                  aria-label="Admin token" autoComplete="off"
-                 className="w-56 rounded-lg border border-line-strong/70 px-3 py-2 text-[13px] outline-none focus:border-brand focus:ring-4 focus:ring-brand/10" />
-          <button onClick={start} disabled={!token || status?.running}
-                  className="rounded-lg bg-ink px-3.5 py-2 text-[13px] font-medium text-white disabled:opacity-40">
+                 className="w-56 rounded-[3px] border border-line-strong bg-page px-3 py-2 text-[13px] outline-none focus:border-ink" />
+          <Button onClick={start} disabled={!token || status?.running}>
             {status?.running ? "Running…" : "Start a 3-minute live run"}
-          </button>
+          </Button>
         </div>
         {err && <p className="mt-2 text-[13px] text-bad">{err}</p>}
-        <pre className="mt-3 max-h-56 overflow-auto rounded-lg bg-ink p-4 font-mono text-[12px] leading-relaxed text-[#e7e6e1]">
+        <pre className="mt-3 max-h-56 overflow-auto rounded-[3px] bg-ink p-4 font-mono text-[12px] leading-relaxed text-[#e9e3d6]">
           {status?.log?.length ? status.log.join("\n") : "No live run yet."}
         </pre>
       </div>
