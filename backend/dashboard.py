@@ -4,23 +4,90 @@
 POST /api/onboard      {url, city?, annual_revenue?} -> {domain, profile}
 GET  /api/businesses                                  -> [profile, ...]
 GET  /api/dashboard    ?domain=&days=                 -> everything the dashboard shows
+POST /api/pool/execute {domain}                       -> the pool buys its contracts from the market maker
+GET  /api/pool/market  ?domain=                       -> market maker quotes + fills for the pool's event
 
 Per-business hedge math: each business is covered for days that come in below
 its own average weather P&L. Its fee is its share of the pooled premium,
 split in proportion to what it would pay hedging alone.
 """
 import json
+import random
 import statistics
+import time
 from datetime import date, timedelta
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
+import contracts
 import db
+import forecast
 import hedge
+import market
+import mock_book
 import onboard
 
 router = APIRouter(prefix="/api")
+
+
+class PoolBody(BaseModel):
+    domain: str
+
+
+SIM_DAYS = 1000
+
+
+def _simulate(biz: dict, plan: dict, share: float) -> dict:
+    """1,000 possible tomorrows drawn from the forecast.
+
+    Unhedged: this business's weather P&L vs. a day at the forecast mean.
+    Hedged (swap): members hand their weather swings to the pool, so opposite
+    businesses fund each other. The pool buys Gemini contracts on its net
+    leftover. Each member gets `share` of the pool's result: the pooled swing
+    plus contract payouts minus the premium. No free lunch: the average hedged
+    day is negative by the expected cost of the hedge.
+    """
+    fc = plan["forecast"]
+    mean, sd = fc["mean_f"], fc["sd_f"]
+    pool = plan["businesses"]
+    expected = {b["domain"]: hedge.pnl(b, mean) for b in pool}
+    premium = plan["hedge_cost_pooled"]
+    rng = random.Random(42)  # same picture on every load
+    temps = [round(rng.gauss(mean, sd)) for _ in range(SIM_DAYS)]
+
+    unhedged, hedged, paid = [], [], 0
+    for t in temps:
+        pool_swing = sum(hedge.pnl(b, t) - expected[b["domain"]] for b in pool)
+        payout = sum(b["contracts"] for b in plan["buckets"] if hedge.in_bucket(_bounds(b), t))
+        paid += payout > 0
+        unhedged.append(hedge.pnl(biz, t) - expected[biz["domain"]])
+        hedged.append(share * (pool_swing + payout - premium))
+
+    lo, hi = min(unhedged + hedged), max(unhedged + hedged)
+    n_bins = 24
+    width = max((hi - lo) / n_bins, 1.0)
+    bins = [{"from": round(lo + i * width, 2), "to": round(lo + (i + 1) * width, 2), "hedged": 0, "unhedged": 0}
+            for i in range(n_bins)]
+    for h, u in zip(hedged, unhedged):
+        bins[min(int((h - lo) / width), n_bins - 1)]["hedged"] += 1
+        bins[min(int((u - lo) / width), n_bins - 1)]["unhedged"] += 1
+
+    def stats(xs):
+        xs_sorted = sorted(xs)
+        return {"mean": round(statistics.mean(xs), 2), "worst": round(xs_sorted[0], 2),
+                "best": round(xs_sorted[-1], 2), "stdev": round(statistics.pstdev(xs), 2),
+                "p5": round(xs_sorted[len(xs) // 20], 2)}
+
+    return {"days": SIM_DAYS, "forecast_mean_f": round(mean, 1), "forecast_sd_f": round(sd, 2),
+            "share": round(share, 3), "premium": round(share * premium, 2), "days_hedge_paid": paid,
+            "unhedged": stats(unhedged), "hedged": stats(hedged), "histogram": bins}
+
+
+def _bounds(row: dict) -> dict:
+    """Parse a plan bucket label ('70°F to 71°F') into lo/hi."""
+    lo, hi = hedge.parse_bucket(row["bucket"])
+    return {"lo": lo, "hi": hi}
 
 
 class OnboardBody(BaseModel):
@@ -68,7 +135,7 @@ def api_businesses():
 @router.get("/dashboard")
 def api_dashboard(domain: str, days: int = Query(365, ge=7, le=730)):
     biz = _business(domain)
-    out = {"business": biz, "hub": None, "forecast": None, "recommendation": None,
+    out = {"business": biz, "hub": None, "forecast": None, "recommendation": None, "simulation": None,
            "temperature_history": [], "pnl_series": [], "summary": None, "pool": []}
     city = biz.get("gemini_city")
     if not city:
@@ -81,7 +148,7 @@ def api_dashboard(domain: str, days: int = Query(365, ge=7, le=730)):
     if not hedgeable:
         return out
 
-    plan = hedge.plan(city, store=False)
+    plan = hedge.plan(city, store=False, price_fn=_mm_ask_fn(city))
     pool = plan["businesses"]
     alone = plan["hedge_cost_by_business"]
     share = alone.get(domain, 0) / sum(alone.values()) if sum(alone.values()) else 0
@@ -99,7 +166,7 @@ def api_dashboard(domain: str, days: int = Query(365, ge=7, le=730)):
     out["recommendation"] = {
         "date": plan["date"], "your_daily_cost": your_cost,
         "standalone_daily_cost": alone.get(domain, 0),
-        "pool_daily_cost": plan["hedge_cost_pooled"],
+        "pool_daily_cost": plan["hedge_cost_pooled"], "priced_by": "market maker" if any(b["price_source"] == "market maker" for b in plan["buckets"]) else "forecast",
         "pool_standalone_cost": plan["hedge_cost_standalone"],
         "pool_savings_pct": round(100 * (1 - plan["hedge_cost_pooled"] / plan["hedge_cost_standalone"]))
         if plan["hedge_cost_standalone"] else 0,
@@ -108,6 +175,8 @@ def api_dashboard(domain: str, days: int = Query(365, ge=7, le=730)):
                        "price_source": b["price_source"], "cost": b["cost"]}
                       for b in plan["buckets"] if b["contracts"]],
     }
+
+    out["simulation"] = _simulate(biz, plan, share)
 
     # History: the selected window this year plus the same calendar window in prior years.
     hist = hedge.history_highs(station["lat"], station["lon"])
@@ -165,3 +234,91 @@ def api_dashboard(domain: str, days: int = Query(365, ge=7, le=730)):
         "total_losses_unhedged": round(sum(min(0.0, x) for x in mine), 2),
     }
     return out
+
+
+def _mm_ask_fn(city: str):
+    """Price lookup at the market maker's current ask, or None if it isn't running."""
+    import api
+
+    if not api.state.get("mm"):
+        return None
+    try:
+        api.ensure_event_quoted(city)
+    except Exception:
+        return None
+
+    def ask(symbol):
+        asks = market.get_book(symbol)["asks"] if symbol else []
+        return asks[0][0] if asks else None
+    return ask
+
+
+# --- Agents in action: the pool trades with the market maker on the simulated book ---
+
+def _pool_event(domain: str) -> tuple[dict, list[str]]:
+    import api  # api imports this module; by request time it's fully loaded
+
+    city = _business(domain).get("gemini_city")
+    if not city:
+        raise HTTPException(400, "this business has no weather market")
+    if not api.state["mm"]:
+        raise HTTPException(503, "market maker not running")
+    api.ensure_event_quoted(city)
+    event = contracts.find_event(city)
+    return event, contracts.event_symbols(event)
+
+
+@router.post("/pool/execute")
+def pool_execute(body: PoolBody):
+    """The pool's agent buys tomorrow's contracts at the market maker's ask."""
+    biz = _business(body.domain)
+    event, symbols = _pool_event(body.domain)
+    plan = hedge.plan(biz["gemini_city"], store=False, price_fn=_mm_ask_fn(biz["gemini_city"]))
+    by_bucket = {contracts.parse(s)["strike"]: s for s in symbols}
+    orders = []
+    for b in plan["buckets"]:
+        if not b["contracts"]:
+            continue
+        sym = b["instrument"] if b["instrument"] in symbols else None
+        if not sym:
+            lo, hi = hedge.parse_bucket(b["bucket"])
+            key = f"LO{hi}" if lo is None else f"HI{lo}" if hi is None else f"{lo}TO{hi}"
+            sym = by_bucket.get(key)
+        asks = market.get_book(sym)["asks"] if sym else []
+        if not asks:
+            orders.append({"bucket": b["bucket"], "qty": b["contracts"], "status": "no ask"})
+            continue
+        price = asks[0][0]
+        qty = min(b["contracts"], 2000)
+        oid = market.place_order("shop", sym, "buy", "yes", price, qty)
+        still_open = {str(o["orderId"]): o for o in market.get_active_orders("shop", sym)}.get(oid)
+        filled = qty - float(still_open["remainingQuantity"]) if still_open else qty
+        if still_open:
+            market.cancel_order("shop", oid)
+        orders.append({"bucket": b["bucket"], "symbol": sym, "qty": qty, "price": price,
+                       "filled": filled, "cost": round(filled * price, 2),
+                       "status": "filled" if filled == qty else "partial" if filled else "unfilled"})
+    return {"mode": market.MODE, "event": event.get("title"),
+            "orders": orders, "total_cost": round(sum(o.get("cost", 0) for o in orders), 2)}
+
+
+@router.get("/pool/market")
+def pool_market(domain: str):
+    """Market maker quotes and recent fills for this business's weather event."""
+    import api
+
+    event, symbols = _pool_event(domain)
+    mm = api.state["mm"]
+    quotes = []
+    for s in symbols:
+        c = contracts.parse(s)
+        q = mm.state.get(s) or {}
+        quotes.append({"symbol": s, "bucket": c["strike"], "lo": c["lo"], "hi": c["hi"],
+                       "fair_value": q.get("fair_value"), "bid": q.get("bid"), "ask": q.get("ask"),
+                       "inventory": (q.get("inventory_yes", 0) or 0) - (q.get("inventory_no", 0) or 0)})
+    fills = []
+    for t in reversed(mock_book.get_trades()[-200:]):
+        if t["symbol"] in symbols:
+            fills.append({**t, "bucket": contracts.parse(t["symbol"])["strike"]})
+    return {"mode": api.MODE, "event": event.get("title"), "quotes": quotes, "fills": fills[:30],
+            "as_of": time.time()}

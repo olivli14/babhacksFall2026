@@ -4,9 +4,10 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Dashboard, getDashboard, longDate, shortDate, usd, usdSigned } from "@/lib/api";
+import { Dashboard, getDashboard, labelBounds, longDate, shortDate, usd, usdSigned } from "@/lib/api";
 import { Card, LegendItem, SectionHead, Segmented, SideBadge, Stat, Wordmark } from "@/components/ui";
-import { CostCompare, ForecastBars, HistoryChart, PnlChart } from "@/components/charts";
+import { CostCompare, ForecastBars, HistoryChart, SimHistogram } from "@/components/charts";
+import { AgentsCard } from "@/components/agents";
 
 const RANGES = [
   { value: 30, label: "30 days" },
@@ -57,7 +58,6 @@ function Body({ d, days, setDays, loading }: {
   const b = d.business;
   const rec = d.recommendation;
   const fc = d.forecast;
-  const s = d.summary;
   const direction = b.side === "cold_hurt" ? "below" : "above";
 
   return (
@@ -170,35 +170,11 @@ function Body({ d, days, setDays, loading }: {
             </div>
           </Card>
 
-          {/* Hedged vs unhedged */}
-          {s && (
-            <Card className={loading ? "opacity-60 transition-opacity" : "transition-opacity"}>
-              <SectionHead eyebrow={`${shortDate(s.from)} – ${shortDate(s.to)}`} title="What the weather did to your profit"
-                           sub="Each day compared with a normal day for that time of year. With the hedge, bad days are covered and you pay a small daily fee."
-                           right={<Segmented label="Date range" options={RANGES} value={days} onChange={setDays} />} />
-              <div className="px-3 pb-2 sm:px-5"><PnlChart rows={d.pnl_series} /></div>
-              <div className="flex flex-wrap gap-5 px-6 pb-5 sm:px-8">
-                <LegendItem color="#898781" label="Without hedge" />
-                <LegendItem color="#4a3aa7" label="With hedge" />
-              </div>
-              <div className="grid grid-cols-1 divide-y divide-line border-t border-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-                <div className="p-6 sm:p-7">
-                  <Stat label="Worst day" value={usd(s.worst_day.unhedged)}
-                        note={<>{shortDate(s.worst_day.date)}: {s.worst_day.high_f.toFixed(0)}°F vs a normal {s.worst_day.normal_high_f.toFixed(0)}°F. Hedged: <span className="font-medium text-brand">{usdSigned(s.worst_day.hedged)}</span></>} />
-                </div>
-                <div className="p-6 sm:p-7">
-                  <Stat label="Day-to-day swings" value={`${Math.round((1 - s.stdev_hedged / s.stdev_unhedged) * 100)}% smaller`}
-                        note={`Typical swing ${usd(s.stdev_unhedged)} unhedged, ${usd(s.stdev_hedged)} hedged`} />
-                </div>
-                <div className="p-6 sm:p-7">
-                  <Stat label="Cost of this protection" value={`${usd(s.daily_fee_pooled)}/day`}
-                        note={`${usd(s.daily_fee_alone)}/day alone. Measured against seasonal normals; day-ahead forecasts make the real hedge cheaper.`} />
-                </div>
-              </div>
-            </Card>
-          )}
+          {d.simulation && <SimulationCard d={d} />}
 
           <WhatIf d={d} />
+
+          <AgentsCard domain={b.domain} />
 
           {/* Under the hood */}
           <Card>
@@ -223,7 +199,7 @@ function Body({ d, days, setDays, loading }: {
                           <td className="py-2.5 text-right">{c.contracts.toLocaleString()}</td>
                           <td className="py-2.5 text-right">{Math.round(c.price * 100)}¢</td>
                           <td className="py-2.5 text-right">{usd(c.cost, 2)}</td>
-                          <td className="py-2.5 pl-6 text-ink-2">{c.price_source === "market" ? "Gemini order book" : "Our forecast (no quote yet)"}</td>
+                          <td className="py-2.5 pl-6 text-ink-2">{c.price_source === "market maker" ? "Market maker's ask" : c.price_source === "market" ? "Gemini order book" : "Our forecast (no quote yet)"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -231,8 +207,10 @@ function Body({ d, days, setDays, loading }: {
                 ) : <p className="text-[13px] text-ink-2">No contracts needed: the forecast doesn&apos;t threaten the pool tomorrow.</p>}
                 <p className="mt-5 max-w-3xl text-[13px] leading-relaxed text-ink-2">
                   Each contract pays $1 if tomorrow&apos;s high lands in its range. Odds come from 82 runs of two weather
-                  models (GFS and ECMWF) at the station Gemini settles on. Where Gemini&apos;s order book has no seller,
-                  we price at our forecast; those contracts can&apos;t be bought until someone quotes them.
+                  models (GFS and ECMWF) at the station Gemini settles on. Prices are the market maker&apos;s current asks:
+                  its forecast odds plus a spread. Members swap their weather swings with the pool, so a heat-hurt
+                  shop&apos;s bad day is partly paid by a cold-hurt shop&apos;s good day, and only the pool&apos;s net
+                  leftover is hedged.
                 </p>
               </div>
             </details>
@@ -243,29 +221,50 @@ function Body({ d, days, setDays, loading }: {
   );
 }
 
-/* What if tomorrow's high is X? Uses this business's linear exposure and tomorrow's fee. */
+/* What if tomorrow's high is X? Same pool math as the simulation. */
 function WhatIf({ d }: { d: Dashboard }) {
-  const b = d.business, fc = d.forecast!, rec = d.recommendation!;
+  const b = d.business, fc = d.forecast!, rec = d.recommendation!, sim = d.simulation!;
   const mean = Math.round(fc.mean_high_f);
-  const [t, setT] = useState(mean + (b.side === "cold_hurt" ? -8 : 8));
-  const dpd = b.dollars_per_degree!, base = b.baseline_temp_f!;
-  const pnlAt = (x: number) => (b.side === "heat_hurt" ? -1 : 1) * dpd * (x - base);
-  const vsForecast = pnlAt(t) - pnlAt(fc.mean_high_f);
-  const unhedged = vsForecast;
-  const hedged = vsForecast + Math.max(0, -vsForecast) - rec.your_daily_cost;
+  const [t, setT] = useState(mean + (b.side === "cold_hurt" ? -6 : 6));
+  const [rolled, setRolled] = useState<number | null>(null);
+  const sign = b.side === "heat_hurt" ? -1 : 1;
+  const unhedged = sign * b.dollars_per_degree! * (t - fc.mean_high_f);
+  const payout = rec.contracts
+    .filter((c) => { const { lo, hi } = labelBounds(c.bucket); return (lo == null || t >= lo) && (hi == null || t <= hi); })
+    .reduce((sum, c) => sum + c.contracts, 0);
+  const poolSwing = rec.net_dollars_per_degree * (t - fc.mean_high_f);
+  const hedged = sim.share * (poolSwing + payout - rec.pool_daily_cost);
   const max = Math.max(Math.abs(unhedged), Math.abs(hedged), 50);
-  const lo = mean - 15, hi = mean + 15;
+  const lo = mean - 12, hi = mean + 12;
+
+  function roll() {
+    // One draw from the forecast: Normal(mean, sd), rounded like NWS reports.
+    const u = 1 - Math.random(), v = Math.random();
+    const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    const x = Math.min(hi, Math.max(lo, Math.round(fc.mean_high_f + z * fc.sd_f)));
+    setT(x);
+    setRolled(x);
+  }
 
   return (
     <Card>
       <SectionHead eyebrow="Try it" title="What if tomorrow surprises us?"
-                   sub={`Drag to pick tomorrow's high. Results are compared with the forecast of ${fc.mean_high_f.toFixed(0)}°F.`} />
+                   sub={`Pick tomorrow's high, or roll one from the forecast. Results are compared with a day at the forecast of ${fc.mean_high_f.toFixed(0)}°F.`}
+                   right={<button onClick={roll} className="rounded-lg border border-line-strong/70 bg-card px-3.5 py-2 text-[13px] font-medium text-ink transition-colors hover:bg-wash">Roll tomorrow&apos;s weather</button>} />
       <div className="grid gap-8 px-6 pb-8 sm:px-8 lg:grid-cols-[1fr_1.2fr] lg:items-center">
         <div>
-          <p className="text-[56px] font-semibold leading-none tracking-tight tabular">{t}°F</p>
-          <input type="range" min={lo} max={hi} value={t} onChange={(e) => setT(Number(e.target.value))}
+          <p className="flex items-baseline gap-3">
+            <span className="text-[56px] font-semibold leading-none tracking-tight tabular">{t}°F</span>
+            {rolled === t && <span className="rounded-full bg-brand-wash px-2.5 py-1 text-xs font-medium text-brand">Rolled from the forecast</span>}
+          </p>
+          <input type="range" min={lo} max={hi} value={t} onChange={(e) => { setT(Number(e.target.value)); setRolled(null); }}
                  aria-label="Tomorrow's high temperature" className="mt-6 w-full accent-[var(--color-brand)]" />
           <div className="mt-1 flex justify-between text-[12px] text-muted tabular"><span>{lo}°F</span><span>forecast {mean}°F</span><span>{hi}°F</span></div>
+          <p className="mt-4 text-[13px] text-ink-2">
+            {payout > 0
+              ? <>The pool&apos;s contracts pay out <span className="tabular font-medium text-ink">{usd(payout)}</span> at this temperature.</>
+              : <>None of the pool&apos;s contracts pay out at this temperature.</>}
+          </p>
         </div>
         <ul className="space-y-4">
           {[
@@ -284,6 +283,38 @@ function WhatIf({ d }: { d: Dashboard }) {
           ))}
           <li className="pl-[120px] text-[13px] text-muted">vs. a day at the forecast</li>
         </ul>
+      </div>
+    </Card>
+  );
+}
+
+function SimulationCard({ d }: { d: Dashboard }) {
+  const sim = d.simulation!;
+  const cut = Math.round((1 - sim.hedged.stdev / sim.unhedged.stdev) * 100);
+  const avgCost = sim.unhedged.mean - sim.hedged.mean;
+  return (
+    <Card>
+      <SectionHead eyebrow={`${sim.days.toLocaleString()} possible tomorrows`} title="How much the hedge evens things out"
+                   sub={`Each simulated day draws tomorrow's high from the forecast (${sim.forecast_mean_f}°F ± ${sim.forecast_sd_f.toFixed(1)}°F) and settles the pool's real contracts. In the pool, good days fund other members' bad days, so your results bunch up near the middle.`} />
+      <div className="px-3 pb-2 sm:px-5"><SimHistogram bins={sim.histogram} /></div>
+      <div className="flex flex-wrap gap-5 px-6 pb-5 sm:px-8">
+        <span className="inline-flex items-center gap-2 text-[13px] text-ink-2"><span className="size-2.5 rounded-sm bg-[#bdbcb4]" />Without hedge</span>
+        <span className="inline-flex items-center gap-2 text-[13px] text-ink-2"><span className="size-2.5 rounded-sm bg-brand" />With hedge</span>
+        <span className="text-[13px] text-muted">Days per result, vs. a day at the forecast</span>
+      </div>
+      <div className="grid grid-cols-1 divide-y divide-line border-t border-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        <div className="p-6 sm:p-7">
+          <Stat label="Worst day" value={<>{usd(sim.unhedged.worst)} <span className="text-muted">→</span> <span className="text-brand">{usd(sim.hedged.worst)}</span></>}
+                note="Without the hedge, then with it" />
+        </div>
+        <div className="p-6 sm:p-7">
+          <Stat label="Day-to-day swings" value={`${cut}% smaller`}
+                note={`Typical swing ${usd(sim.unhedged.stdev)} unhedged, ${usd(sim.hedged.stdev)} hedged`} />
+        </div>
+        <div className="p-6 sm:p-7">
+          <Stat label="Average cost" value={`${usd(avgCost, 2)}/day`}
+                note={`You pay ${usd(sim.premium, 2)} up front; payouts on ${sim.days_hedge_paid.toLocaleString()} of ${sim.days.toLocaleString()} days bring most of it back.`} />
+        </div>
       </div>
     </Card>
   );

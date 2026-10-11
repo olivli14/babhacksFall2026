@@ -207,7 +207,8 @@ def bucket_prob(code, b, day):
     return max(0.0, p_lo - p_hi)
 
 
-def plan(city, day=None, store=True):
+def plan(city, day=None, store=True, price_fn=None):
+    """price_fn(instrument) -> executable ask or None (e.g. the market maker's); overrides other prices."""
     businesses = load_businesses(city)
     if not businesses:
         raise OnboardError(f"no classified businesses mapped to {city}")
@@ -224,8 +225,13 @@ def plan(city, day=None, store=True):
     total = sum(raw)
     for b, p in zip(buckets, raw):
         b["model_prob"] = round(p / total, 3)
-        b["price"] = b["ask"] if b["ask"] is not None else b["model_prob"]
-        b["price_source"] = "market" if b["ask"] is not None else "model (no quote)"
+        exec_ask = price_fn(b["instrument"]) if price_fn else None
+        if exec_ask is not None:
+            b["price"], b["price_source"] = exec_ask, "market maker"
+        elif b["ask"] is not None:
+            b["price"], b["price_source"] = b["ask"], "market"
+        else:
+            b["price"], b["price_source"] = b["model_prob"], "model (no quote)"
         b["temp_f"] = round(bucket_temp(b, members), 1)
 
     # Per-business and pooled P&L per bucket.

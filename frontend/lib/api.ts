@@ -44,6 +44,7 @@ export interface Dashboard {
     your_daily_cost: number;
     standalone_daily_cost: number;
     pool_daily_cost: number;
+    priced_by: "market maker" | "forecast";
     pool_standalone_cost: number;
     pool_savings_pct: number;
     pool_size: number;
@@ -51,6 +52,7 @@ export interface Dashboard {
     contracts: { bucket: string; contracts: number; price: number; price_source: string; cost: number }[];
   } | null;
   pool: { domain: string; name: string; side: Side; dollars_per_degree: number }[];
+  simulation: Simulation | null;
   temperature_history: { date: string; year: number; years_back: number; high_f: number }[];
   pnl_series: { date: string; high_f: number; normal_high_f: number; unhedged: number; hedged: number }[];
   summary: {
@@ -67,6 +69,47 @@ export interface Dashboard {
     total_fee_alone: number;
     total_losses_unhedged: number;
   } | null;
+}
+
+export interface SimStats { mean: number; worst: number; best: number; stdev: number; p5: number }
+
+export interface Simulation {
+  days: number;
+  forecast_mean_f: number;
+  forecast_sd_f: number;
+  share: number;
+  premium: number;
+  days_hedge_paid: number;
+  unhedged: SimStats;
+  hedged: SimStats;
+  histogram: { from: number; to: number; hedged: number; unhedged: number }[];
+}
+
+export type Mode = "mock" | "sandbox";
+
+export interface PoolMarket {
+  mode: Mode;
+  event: string;
+  quotes: { symbol: string; bucket: string; lo: number | null; hi: number | null;
+            fair_value: number | null; bid: number | null; ask: number | null; inventory: number }[];
+  fills: { time: number; symbol: string; bucket: string; yes_buyer: string; yes_seller: string;
+           yes_price: number; qty: number }[];
+}
+
+export interface ExecuteResult {
+  mode: Mode;
+  event: string;
+  total_cost: number;
+  orders: { bucket: string; qty: number; price?: number; filled?: number; cost?: number; status: string }[];
+}
+
+export interface LiveStatus {
+  mode: Mode;
+  running: boolean;
+  symbol?: string | null;
+  description?: string;
+  error?: string | null;
+  log: string[];
 }
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -88,6 +131,32 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const getDashboard = (domain: string, days: number) =>
   api<Dashboard>(`/api/dashboard?domain=${encodeURIComponent(domain)}&days=${days}`);
+export const getPoolMarket = (domain: string) =>
+  api<PoolMarket>(`/api/pool/market?domain=${encodeURIComponent(domain)}`);
+export const executePool = (domain: string) =>
+  api<ExecuteResult>("/api/pool/execute", { method: "POST", body: JSON.stringify({ domain }) });
+export const getLive = () => api<LiveStatus>("/live");
+export const startLive = (token: string, seconds = 180) =>
+  api<{ started: boolean }>("/live/start", {
+    method: "POST", body: JSON.stringify({ seconds }), headers: { "X-Demo-Admin-Token": token },
+  });
+
+/** Gemini strike code -> readable range: LO68 -> "68°F or less", 69TO70 -> "69–70°F", HI77 -> "77°F+" */
+export function strikeLabel(code: string): string {
+  if (code.startsWith("LO")) return `${code.slice(2)}°F or less`;
+  if (code.startsWith("HI")) return `${code.slice(2)}°F+`;
+  const [a, b] = code.split("TO");
+  return `${a}–${b}°F`;
+}
+
+/** Plan bucket label ("70°F to 71°F", "69°F or below", "72°F or above") -> inclusive bounds. */
+export function labelBounds(label: string): { lo: number | null; hi: number | null } {
+  const n = (label.match(/-?\d+/g) || []).map(Number);
+  if (label.includes("below")) return { lo: null, hi: n[0] };
+  if (label.includes("above")) return { lo: n[0], hi: null };
+  return { lo: n[0], hi: n[1] };
+}
+
 export const getBusinesses = () => api<Business[]>("/api/businesses");
 export const onboard = (body: { url: string; city?: string; annual_revenue?: number }) =>
   api<{ domain: string; profile: Business }>("/api/onboard", { method: "POST", body: JSON.stringify(body) });

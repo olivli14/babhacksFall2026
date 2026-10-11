@@ -2,7 +2,7 @@
 "use client";
 
 import {
-  Area, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer,
+  Area, Bar, BarChart, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
 } from "recharts";
 import { Bucket, Dashboard, Side, shortDate, usd, usdSigned } from "@/lib/api";
@@ -158,5 +158,36 @@ export function CostCompare({ alone, pooled }: { alone: number; pooled: number }
         </li>
       ))}
     </ul>
+  );
+}
+
+/* ---------- 1,000 simulated tomorrows: distribution of daily results ---------- */
+
+export function SimHistogram({ bins }: { bins: { from: number; to: number; hedged: number; unhedged: number }[] }) {
+  const data = bins.map((b) => ({ ...b, mid: (b.from + b.to) / 2 }));
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <BarChart data={data} barGap={2} barCategoryGap="18%" margin={{ top: 8, right: 12, bottom: 0, left: -12 }}>
+        <CartesianGrid vertical={false} stroke={C.line} />
+        <XAxis dataKey="mid" tickFormatter={(v) => usd(v)} tickLine={false} axisLine={{ stroke: C.base }} minTickGap={36} />
+        <YAxis tickLine={false} axisLine={false} width={44} allowDecimals={false} />
+        <Tooltip content={<SimTip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
+        <ReferenceLine x={data.reduce((best, b) => (Math.abs(b.mid) < Math.abs(best.mid) ? b : best), data[0]).mid} stroke={C.base} strokeDasharray="3 3" />
+        <Bar dataKey="unhedged" fill={C.prior} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+        <Bar dataKey="hedged" fill={C.brand} radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+function SimTip({ active, payload }: { active?: boolean; payload?: { payload: { from: number; to: number; hedged: number; unhedged: number } }[] }) {
+  if (!active || !payload?.length) return null;
+  const r = payload[0].payload;
+  return (
+    <div className="rounded-lg border border-line bg-card px-3 py-2.5 text-[13px] shadow-sm">
+      <p className="mb-1.5 font-medium text-ink">{usd(r.from)} to {usd(r.to)}</p>
+      <p className="tabular flex justify-between gap-6"><span className="text-ink-2">Without hedge</span><span className="text-ink">{r.unhedged} days</span></p>
+      <p className="tabular flex justify-between gap-6"><span className="text-ink-2">With hedge</span><span className="font-medium text-brand">{r.hedged} days</span></p>
+    </div>
   );
 }
