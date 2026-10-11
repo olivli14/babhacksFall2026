@@ -104,8 +104,13 @@ def _match(taker: dict) -> None:
             _fill(o, qty, yes_px)
         if maker["remaining"] <= 0:
             del _orders[maker["orderId"]]
+        buyer, seller = (taker, maker) if taker["book_side"] == "bid" else (maker, taker)
         _trades.append({"symbol": taker["symbol"], "yes_price": yes_px, "qty": qty,
                         "taker": taker["account"], "maker": maker["account"],
+                        # Who ended up long vs short YES, and how each side placed it.
+                        "yes_buyer": buyer["account"], "yes_seller": seller["account"],
+                        "buyer_order": f'{buyer["side"]} {buyer["outcome"]}',
+                        "seller_order": f'{seller["side"]} {seller["outcome"]}',
                         "taker_order": taker["orderId"], "maker_order": maker["orderId"],
                         "time": time.time()})
 
