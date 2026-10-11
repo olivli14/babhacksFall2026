@@ -1,5 +1,30 @@
 [
   {
+    "domain": "coldstonecreamery.com",
+    "name": "Cold Stone Creamery",
+    "logo_url": "https://media.brand.dev/fa43d8f6-cdb7-4ade-9427-33c825391f96.svg",
+    "address": "Santa Monica",
+    "lat": 34.01949,
+    "lon": -118.49138,
+    "side": "cold_hurt",
+    "confidence": 1.0,
+    "reason_codes": [
+      "ice cream x25",
+      "smoothie x4",
+      "sorbet x2"
+    ],
+    "business_type": "frozen_dessert",
+    "baseline_temp_f": 78,
+    "annual_revenue": 2000000.0,
+    "dollars_per_degree": 136.99,
+    "dollars_per_degree_source": "revenue",
+    "gemini_city": "Los Angeles",
+    "distance_miles": 7.1,
+    "location_source": "cli",
+    "menu_url": "https://www.coldstonecreamery.com/menu",
+    "onboarded_at": "2026-10-11T23:27:15+00:00"
+  },
+  {
     "domain": "creamistry.com",
     "name": "Creamistry",
     "logo_url": "https://media.brand.dev/7dee634b-5e2d-49de-9aef-39861874ec8b.png",
@@ -73,6 +98,55 @@
     "location_source": "site_text",
     "menu_url": "https://gget.com/collections/current-menu",
     "onboarded_at": "2026-10-11T21:46:17+00:00"
+  },
+  {
+    "domain": "hutchandwaldo.com",
+    "name": "Hutch and Waldo",
+    "logo_url": "https://media.brand.dev/1f760217-cb89-4d17-940a-1920eb43f0bf.png",
+    "address": "New york city",
+    "lat": 40.71427,
+    "lon": -74.00597,
+    "side": "needs_review",
+    "confidence": 0.524,
+    "reason_codes": [
+      "espresso x2",
+      "bakery x2",
+      "latte x3"
+    ],
+    "business_type": "hot_coffee_bakery",
+    "baseline_temp_f": 75,
+    "annual_revenue": 2000000.0,
+    "dollars_per_degree": 54.79,
+    "dollars_per_degree_source": "revenue",
+    "gemini_city": "NYC",
+    "distance_miles": 0.0,
+    "location_source": "cli",
+    "menu_url": "https://hutchandwaldo.com/menu",
+    "onboarded_at": "2026-10-11T23:12:53+00:00"
+  },
+  {
+    "domain": "saltandstraw.com",
+    "name": "Salt & Straw",
+    "logo_url": "https://media.brand.dev/374a87e3-6592-4201-bd3f-c2288380c889.svg",
+    "address": "Los Angeles",
+    "lat": 34.05223,
+    "lon": -118.24368,
+    "side": "cold_hurt",
+    "confidence": 1.0,
+    "reason_codes": [
+      "ice cream x17",
+      "scoop x13"
+    ],
+    "business_type": "frozen_dessert",
+    "baseline_temp_f": 78,
+    "annual_revenue": 1500000.0,
+    "dollars_per_degree": 102.74,
+    "dollars_per_degree_source": "revenue",
+    "gemini_city": "Los Angeles",
+    "distance_miles": 12.1,
+    "location_source": "cli",
+    "menu_url": "https://saltandstraw.com/pages/menu-1",
+    "onboarded_at": "2026-10-11T23:14:07+00:00"
   },
   {
     "domain": "starbucks.com",
