@@ -281,7 +281,10 @@ def city_from_text(text):
 
 
 def gemini_stations():
-    """Return [{city, state, lat, lon}] for every active Gemini weather city."""
+    """Return [{city, code, state, lat, lon}] for every active Gemini weather city.
+
+    code is Gemini's location code from the ticker (WXHIGH-LA-... -> "LA").
+    """
     data = http_get_json(GEMINI_EVENTS_URL, {"status": "active", "category": "Weather", "limit": 200})
     stations = {}
     for ev in data.get("data", []):
@@ -289,6 +292,7 @@ def gemini_stations():
         if not m or m.group(1) in stations:
             continue
         city = m.group(1)
+        code = (ev.get("ticker") or "").split("-")[1] if "-" in (ev.get("ticker") or "") else None
         state = None
         try:
             desc = ev["contracts"][0]["description"]["content"][0]["value"]
@@ -298,11 +302,11 @@ def gemini_stations():
             pass
         if city in STATION_OVERRIDES:
             o = STATION_OVERRIDES[city]
-            stations[city] = {"city": city, "state": state, "lat": o["lat"], "lon": o["lon"]}
+            stations[city] = {"city": city, "code": code, "state": state, "lat": o["lat"], "lon": o["lon"]}
             continue
         coords = geocode(CITY_ALIASES.get(city, city), state)
         if coords:
-            stations[city] = {"city": city, "state": state, "lat": coords[0], "lon": coords[1]}
+            stations[city] = {"city": city, "code": code, "state": state, "lat": coords[0], "lon": coords[1]}
         else:
             log(f"warn: could not geocode Gemini city {city}")
     if not stations:

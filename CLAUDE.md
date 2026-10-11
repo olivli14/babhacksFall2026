@@ -217,4 +217,5 @@ In `backend/`. See the README section "Onboarding, pooling, and hedge sizing".
 - `db.py`: Supabase over REST. Tables in `supabase/schema.sql`: `business_inputs` (raw form input), `businesses`, `weather_daily`, `hedge_plans`.
 - Keys for these modules are in the OS keychain via `keyring`, not `.env`: `contextdev`/`api_key`, `supabase`/`secret_key`.
 - `cache/` is committed so the three demo businesses (dkramen.com, gget.com, wanderlustcreamery.com) run offline without keys.
-- The ensemble in `hedge.py` (`ensemble_highs`) is the natural source for the real `forecast.prob_above`.
+- **`forecast.py` is now real** (same `prob_above(location, threshold_f, date)` interface). Normal(mean, sd) of the daily high from the Open-Meteo GFS + ECMWF ensembles (82 members) at the station; sd = sqrt(spread^2 + 2°F^2); whole-degree rounding; climatology fallback beyond the 7-day window. `location` takes a Gemini code (`LA`) or city name. Cached in memory 30 min. `distribution(location, date)` returns mean/sd/source for the UI.
+- Pricing caution: same-day contracts trade on observed temps the forecast can't see (2026-10-11 LA: market 64¢ vs forecast 31% on 72–73°F). The MM should quote next-day events only, or widen same-day spreads.
