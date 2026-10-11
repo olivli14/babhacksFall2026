@@ -27,14 +27,19 @@ _Last updated 2026-10-11._
 | 3. `gemini_client.py` | ✅ done | `.venv/bin/python scripts/test_client.py`: places, cancels and fills a real 1-contract trade between `mm` and `shop` on a sandbox crypto contract |
 | 4. `mock_book.py` + `market.py` | ✅ done | `.venv/bin/python scripts/test_mock_book.py` ends with `ALL MOCK BOOK CHECKS PASSED` |
 | 5. `forecast.py` stub | ✅ done (stub) | `.venv/bin/python -c "from forecast import prob_above; print(prob_above('NYC', 66, '2026-10-12'))"` prints ~0.5. Normal curve around a fixed 66°F mean (sd 5°F, small jitter); location and date are ignored. **Teammate replaces it.** |
-| 6. `mm_agent.py`, `shop_agent.py` | next | |
-| 7–11 | not started | |
+| 6. `mm_agent.py`, `shop_agent.py`, `contracts.py` | ✅ done (branch `agents`) | `MODE=mock .venv/bin/python mm_agent.py` prints bid/ask for all 6 NYC buckets. `MODE=mock .venv/bin/python shop_agent.py` prints a recommendation, 3 filled orders, and hot/cold scenarios |
+| 6b. Live sandbox run of both agents | ✅ done | `.venv/bin/python scripts/live_demo.py 300`: real `MarketMaker` + shop sizing on a sandbox crypto contract for 300 s, then cancels everything. Fair value = mid of other traders' quotes |
+| 7. `api.py` (FastAPI) | next | |
+| 8–11 | not started | |
 
 **Backend files so far**
 - `config.py`: loads `backend/.env` (template in `backend/.env.example`). Holds `MODE` and per-agent credentials.
 - `gemini_auth.py`: `private(account, path, fields, method)` signs and sends private REST calls.
 - `gemini_client.py`: the real sandbox implementation of the interface below.
 - `mock_book.py`: the in-memory implementation of the same interface, with matching, positions and cash. It also has mock-only helpers: `get_trades()`, `get_cash()` and `reset()`.
+- `contracts.py`: parses weather tickers (`LO68`, `69TO70`, `HI77`), `fair_value(symbol)` from `prob_above`, and finds a city's event. **Teammate: this is where forecast probabilities become contract prices.**
+- `mm_agent.py`: `MarketMaker(symbols, MMConfig)` quotes every bucket of an event. `step()` runs one round; `start()`/`stop()` run it in a background thread. Pricing knobs are in `MMConfig`; the quote logic is in `quote()`.
+- `shop_agent.py`: `recommend(profile)`, `execute(rec)`, `scenario(profile, rec, temp_f)`, and `ICE_CREAM_PRESET`. It buys a **strip**: YES on every bucket where the business loses money, each sized to that bucket's loss and scaled down evenly to fit the premium budget.
 - **`market.py`: what agents should import** (`import market`). It re-exports either `gemini_client` or `mock_book` depending on `MODE`.
 
 ### What we learned (these override anything below that disagrees)
@@ -45,7 +50,9 @@ _Last updated 2026-10-11._
 5. **Order books are in YES space.** `get_book` returns YES bids and asks. A NO buy at q appears as a YES ask at 1-q.
 6. Both API keys are **master keys**, and the sandbox requires an explicit `"account": "primary"` in every private payload (the docs say it's optional; it isn't). `config.py` adds it automatically. Each sandbox group is capped at 1 account, so the two agents use two separate sandbox logins.
 7. Production book liquidity on weather contracts is thin (often no bid or ask), so don't rely on it for fair value.
-8. Gemini docs are available as markdown: `https://developer.gemini.com/llms.txt`. The OpenAPI spec is at `https://developer.gemini.com/specs/openapi/prediction-markets.yaml`.
+8. **Gemini nets YES against NO** in the same account (a YES+NO pair redeems for $1). So positions show only the net side. `mock_book` does the same.
+9. **Live run (2026-10-11, 5 min):** the shop's YES buy matched the market maker's ask on the sandbox. But a sandbox bot kept selling into the market maker's bid, and with `max_skew=0.03` it built up 50 YES. **Pricing to-do for teammate:** stronger inventory skew, an inventory limit, or stopping the bid past a max position.
+10. Gemini docs are available as markdown: `https://developer.gemini.com/llms.txt`. The OpenAPI spec is at `https://developer.gemini.com/specs/openapi/prediction-markets.yaml`.
 
 ## Stack and repo layout
 

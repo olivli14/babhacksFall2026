@@ -8,6 +8,7 @@ Mirrors the real sandbox rules we observed:
 - Price-time priority, fills at the resting order's price.
 - Self-trade prevention: an incoming order cancels the same account's resting
   orders it would cross.
+- YES and NO held in the same account net out (each pair redeems for $1).
 Thread-safe, so the mm loop and the API can share it.
 """
 import itertools
@@ -124,6 +125,22 @@ def _fill(order: dict, qty: float, yes_px: float) -> None:
         _cash[order["account"]] = _cash.get(order["account"], 0.0) + px * qty
     if pos["qty"] <= 1e-9:
         del _positions[key]
+    _net(order["account"], order["symbol"])
+
+
+def _net(account: str, symbol: str) -> None:
+    """Like Gemini: holding YES and NO together redeems pairs for $1 each."""
+    yes = _positions.get((account, symbol, "yes"))
+    no = _positions.get((account, symbol, "no"))
+    if not (yes and no):
+        return
+    pairs = min(yes["qty"], no["qty"])
+    for key, pos in (((account, symbol, "yes"), yes), ((account, symbol, "no"), no)):
+        pos["cost"] -= pos["cost"] / pos["qty"] * pairs
+        pos["qty"] -= pairs
+        if pos["qty"] <= 1e-9:
+            del _positions[key]
+    _cash[account] = _cash.get(account, 0.0) + pairs
 
 
 def cancel_order(account: str, order_id: str) -> None:
