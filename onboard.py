@@ -22,6 +22,8 @@ import keyring  # noqa: E402
 import requests  # noqa: E402
 from context.dev import ContextDev  # noqa: E402
 
+import db  # noqa: E402
+
 # ---------------------------------------------------------------------------
 # Config: tweak these
 # ---------------------------------------------------------------------------
@@ -415,12 +417,48 @@ def onboard(url, city_override=None, annual_revenue=None):
     }
 
 
+def location_key(profile):
+    return (profile.get("address") or "").strip().lower()
+
+
 def upsert(profile):
+    """Save to Supabase (businesses) and the local JSON mirror, keyed by domain + location."""
+    key = (profile["domain"], location_key(profile))
     DATA_FILE.parent.mkdir(exist_ok=True)
     rows = json.loads(DATA_FILE.read_text()) if DATA_FILE.exists() else []
-    rows = [r for r in rows if r.get("domain") != profile["domain"]] + [profile]
-    rows.sort(key=lambda r: r["domain"])
+    rows = [r for r in rows if (r.get("domain"), location_key(r)) != key] + [profile]
+    rows.sort(key=lambda r: (r["domain"], location_key(r)))
     DATA_FILE.write_text(json.dumps(rows, indent=2) + "\n")
+    try:
+        db.upsert("businesses", [{**profile, "location_key": key[1]}], on_conflict="domain,location_key")
+    except Exception as e:
+        log(f"warn: Supabase write to businesses failed: {e}")
+
+
+def run(url, city=None, annual_revenue=None):
+    """Record the raw input, onboard, save the profile, and mark the input ok/error."""
+    input_id = None
+    try:
+        rows = db.insert("business_inputs", [{"url": url, "city": city, "annual_revenue": annual_revenue}])
+        input_id = rows[0]["id"]
+    except Exception as e:
+        log(f"warn: Supabase write to business_inputs failed: {e}")
+
+    def mark(values):
+        if input_id is not None:
+            try:
+                db.update("business_inputs", {"id": input_id}, values)
+            except Exception as e:
+                log(f"warn: Supabase update of business_inputs failed: {e}")
+
+    try:
+        profile = onboard(url, city, annual_revenue)
+        upsert(profile)
+    except Exception as e:
+        mark({"status": "error", "error": str(e)[:500]})
+        raise
+    mark({"status": "ok", "domain": profile["domain"]})
+    return profile
 
 
 def main():
@@ -438,8 +476,7 @@ def main():
 
     start = time.time()
     try:
-        profile = onboard(args.url, args.city, args.annual_revenue)
-        upsert(profile)
+        profile = run(args.url, args.city, args.annual_revenue)
     except OnboardError as e:
         log(f"error: {e}")
         return 2

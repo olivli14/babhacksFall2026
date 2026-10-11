@@ -26,6 +26,7 @@ from datetime import date, datetime, timedelta, timezone
 
 import requests
 
+import db
 import onboard
 from onboard import DATA_FILE, GEMINI_EVENTS_URL, OnboardError, cached, http_get_json, log
 
@@ -37,6 +38,7 @@ COVERAGE = 1.0          # share of each bucket's loss to hedge (1.0 = full)
 MIN_PROB = 0.01         # floor on model probabilities so no bucket is "free"
 ENSEMBLE_MODEL = "gfs_seamless"
 BACKTEST_DAYS = 365
+HISTORY_YEARS = 5       # pulled and stored for the dashboard's year-over-year chart
 
 ENSEMBLE_URL = "https://ensemble-api.open-meteo.com/v1/ensemble"
 ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
@@ -120,9 +122,9 @@ def ensemble_highs(lat, lon, day):
     return [daily[k][i] for k in daily if k != "time" and daily[k][i] is not None]
 
 
-def history_highs(lat, lon, days=BACKTEST_DAYS):
+def history_highs(lat, lon, years=HISTORY_YEARS):
     end = date.today() - timedelta(days=3)  # archive lags a couple of days
-    start = end - timedelta(days=days - 1)
+    start = date(end.year - years + 1, 1, 1)
     data = http_get_json(ARCHIVE_URL, {
         "latitude": lat, "longitude": lon, "daily": "temperature_2m_max",
         "temperature_unit": "fahrenheit", "timezone": "auto",
@@ -172,18 +174,41 @@ def hedge_cost(pnls, buckets):
     return contracts, round(cost, 2)
 
 
+def load_businesses(city):
+    """Hedgeable businesses in a city, from Supabase; local JSON if Supabase is unreachable."""
+    try:
+        rows = db.select("businesses", gemini_city=city)
+    except Exception as e:
+        log(f"warn: Supabase read failed ({e}); using {DATA_FILE.name}")
+        rows = [b for b in (json.loads(DATA_FILE.read_text()) if DATA_FILE.exists() else [])
+                if b.get("gemini_city") == city]
+    return [b for b in rows if b.get("side") in ("heat_hurt", "cold_hurt")
+            and b.get("dollars_per_degree") and b.get("baseline_temp_f") is not None]
+
+
+def store_weather(city, station, hist, ev_date, members):
+    """Save history and the forecast to the weather_daily table."""
+    base = {"city": city, "lat": station["lat"], "lon": station["lon"]}
+    rows = [{**base, "date": t, "source": "archive", "high_f": v, "members": None} for t, v in hist]
+    if members:
+        rows.append({**base, "date": ev_date.isoformat(), "source": "forecast",
+                     "high_f": round(statistics.mean(members), 2), "members": members})
+    try:
+        db.upsert("weather_daily", rows, on_conflict="city,date,source")
+    except Exception as e:
+        log(f"warn: Supabase write to weather_daily failed: {e}")
+
+
 def plan(city, day=None):
-    businesses = [
-        b for b in (json.loads(DATA_FILE.read_text()) if DATA_FILE.exists() else [])
-        if b.get("gemini_city") == city and b.get("side") in ("heat_hurt", "cold_hurt")
-        and b.get("dollars_per_degree") and b.get("baseline_temp_f") is not None
-    ]
+    businesses = load_businesses(city)
     if not businesses:
         raise OnboardError(f"no classified businesses mapped to {city}")
 
     station = next(s for s in onboard.gemini_stations() if s["city"] == city)
     ev_date, buckets = market_for(city, day)
     members = ensemble_highs(station["lat"], station["lon"], ev_date)
+    hist = history_highs(station["lat"], station["lon"])
+    store_weather(city, station, hist, ev_date, members)
 
     # Probability per bucket: ensemble share, floored, renormalized.
     raw = [sum(in_bucket(b, m) for m in members) / len(members) if members else 1 / len(buckets)
@@ -233,19 +258,18 @@ def plan(city, day=None):
         "hedge_cost_pooled": pooled_cost,
         "hedge_cost_standalone": round(standalone_cost, 2),
         "netting_savings": round(standalone_cost - pooled_cost, 2),
-        "backtest": backtest(businesses, station),
+        "backtest": backtest(businesses, hist[-BACKTEST_DAYS:]),
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
 
 
-def backtest(businesses, station):
+def backtest(businesses, hist):
     """Replay the last year: unhedged vs hedged daily pool P&L.
 
     The hedge pays each day's shortfall versus the year's average P&L and is
     bought at fair price (its average payout). Real hedges add bucket rounding
     and spreads.
     """
-    hist = history_highs(station["lat"], station["lon"])
     if not hist:
         return None
     temps = [t for _, t in hist]
@@ -275,6 +299,11 @@ def backtest(businesses, station):
 
 
 def save(result):
+    try:
+        db.upsert("hedge_plans", [{"city": result["city"], "date": result["date"], "plan": result}],
+                  on_conflict="city,date")
+    except Exception as e:
+        log(f"warn: Supabase write to hedge_plans failed: {e}")
     rows = json.loads(PLANS_FILE.read_text()) if PLANS_FILE.exists() else []
     rows = [r for r in rows if (r["city"], r["date"]) != (result["city"], result["date"])] + [result]
     rows.sort(key=lambda r: (r["city"], r["date"]))
