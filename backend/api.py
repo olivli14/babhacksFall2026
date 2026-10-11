@@ -9,6 +9,8 @@ import hashlib
 import json
 import logging
 import os
+import random
+import statistics
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -20,8 +22,10 @@ from pydantic import BaseModel, Field
 
 import config
 import contracts
+import forecast
 import market
 import mm_agent
+import mock_book
 import shop_agent
 from gemini_auth import private
 from live import LiveRun, cancel_all_open
@@ -30,7 +34,7 @@ log = logging.getLogger("api")
 MODE = config.MODE
 MAX_PREMIUM_BUDGET = 1000.0
 ADMIN_TOKEN = os.getenv("DEMO_ADMIN_TOKEN", "")
-ORIGINS = ["http://localhost:3000"] + [
+ORIGINS = ["http://localhost:3000", "http://localhost:5173"] + [
     o.strip() for o in os.getenv("FRONTEND_ORIGINS", "").split(",") if o.strip()]
 
 
@@ -47,6 +51,15 @@ class Profile(BaseModel):
 
 class ProfileBody(BaseModel):
     profile: Profile
+
+
+class SimulateBody(BaseModel):
+    profile_id: str
+    days: int = Field(default=1000, ge=10, le=10_000)
+
+
+class SettleBody(BaseModel):
+    profile_id: str
 
 
 class LiveStartBody(BaseModel):
@@ -199,6 +212,82 @@ def scenarios(profile_id: str):
     return {"mode": MODE, "executed": entry["orders"] is not None,
             "hot": shop_agent.scenario(p, rec, hot),
             "cold": shop_agent.scenario(p, rec, cold)}
+
+
+@app.get("/trades")
+def trades(limit: int = Query(50, ge=1, le=500)):
+    """Recent fills on the simulated book, newest first, in plain words."""
+    out = []
+    for t in reversed(mock_book.get_trades()[-limit:]):
+        c = contracts.parse(t["symbol"])
+        out.append({**t, "bucket": c["strike"],
+                    "no_price": round(1 - t["yes_price"], 2),
+                    "notional": round(t["yes_price"] * t["qty"], 2)})
+    return {"mode": MODE, "trades": out}
+
+
+def _forecast_for(entry: dict) -> dict:
+    rec = entry["rec"]
+    return forecast.distribution(rec["location"], rec["date"])
+
+
+def _entry(profile_id: str) -> dict:
+    entry = profiles.get(profile_id)
+    if not entry:
+        raise HTTPException(404, "unknown profile_id; call /hedge first")
+    return entry
+
+
+@app.post("/simulate")
+def simulate(body: SimulateBody):
+    """Draw `days` possible daily highs from the forecast and settle the hedge each time."""
+    entry = _entry(body.profile_id)
+    p, rec = entry["profile"], entry["rec"]
+    dist = _forecast_for(entry)
+    rng = random.Random(42)  # same picture every click, so the demo is stable
+    temps = [round(rng.gauss(dist["mean_f"], dist["sd_f"])) for _ in range(body.days)]
+    runs = [shop_agent.scenario(p, rec, t) for t in temps]
+    hedged = [r["net"] for r in runs]
+    unhedged = [r["net_unhedged"] for r in runs]
+
+    lo, hi = min(hedged + unhedged), max(hedged + unhedged)
+    n_bins = 20
+    width = max((hi - lo) / n_bins, 1.0)
+    bins = [{"from": round(lo + i * width, 2), "to": round(lo + (i + 1) * width, 2),
+             "hedged": 0, "unhedged": 0} for i in range(n_bins)]
+    for h, u in zip(hedged, unhedged):
+        bins[min(int((h - lo) / width), n_bins - 1)]["hedged"] += 1
+        bins[min(int((u - lo) / width), n_bins - 1)]["unhedged"] += 1
+
+    def stats(xs):
+        return {"mean": round(statistics.mean(xs), 2), "worst": round(min(xs), 2),
+                "best": round(max(xs), 2), "stdev": round(statistics.pstdev(xs), 2),
+                "p5": round(sorted(xs)[len(xs) // 20], 2)}
+
+    temp_counts: dict[int, int] = {}
+    for t in temps:
+        temp_counts[t] = temp_counts.get(t, 0) + 1
+    return {"mode": MODE, "days": body.days,
+            "forecast": {k: dist[k] for k in ("mean_f", "sd_f", "source")},
+            "hedged": stats(hedged), "unhedged": stats(unhedged),
+            "days_hedge_paid": sum(r["hedge_payout"] > 0 for r in runs),
+            "premium": rec["premium"],
+            "histogram": bins,
+            "temperatures": [{"temp_f": t, "days": n} for t, n in sorted(temp_counts.items())],
+            "sample": runs[:30]}
+
+
+@app.post("/settle")
+def settle(body: SettleBody):
+    """Pick one high from the forecast and settle the hedge: one simulated 'tomorrow'."""
+    entry = _entry(body.profile_id)
+    dist = _forecast_for(entry)
+    temp = round(random.gauss(dist["mean_f"], dist["sd_f"]))
+    result = shop_agent.scenario(entry["profile"], entry["rec"], temp)
+    winners = [l["bucket"] for l in entry["rec"]["legs"]
+               if contracts.pays_out(contracts.parse(l["symbol"]), temp)]
+    return {"mode": MODE, "temp_f": temp, "forecast": {k: dist[k] for k in ("mean_f", "sd_f", "source")},
+            "paying_buckets": winners, "result": result}
 
 
 @app.get("/presets")
