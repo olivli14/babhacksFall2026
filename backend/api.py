@@ -27,6 +27,7 @@ import forecast
 import market
 import mm_agent
 import mock_book
+import sandbox_view
 import shop_agent
 from gemini_auth import private
 from live import LiveRun, cancel_all_open
@@ -320,6 +321,19 @@ def live_start(body: LiveStartBody, x_demo_admin_token: str = Header(default="")
     state["live"] = LiveRun(body.seconds)
     state["live"].start()
     return {"mode": "sandbox", "started": True, "seconds": body.seconds}
+
+
+@app.get("/sandbox/accounts")
+def sandbox_accounts():
+    """Both agents' real Gemini sandbox accounts: USD, positions, orders, fills.
+    Read-only and public; cached ~12 s so polling can't crowd out live-run orders."""
+    try:
+        snap = sandbox_view.snapshot()
+    except Exception as e:
+        raise HTTPException(502, f"Gemini sandbox unavailable: {str(e)[:200]}")
+    live = state["live"]
+    return {"mode": "sandbox", "live_running": bool(live and live.running),
+            "live_symbol": live.status().get("symbol") if live else None, **snap}
 
 
 @app.post("/live/stop")

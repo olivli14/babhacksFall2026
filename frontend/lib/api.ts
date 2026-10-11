@@ -137,6 +137,37 @@ export const getPoolMarket = (domain: string) =>
 export const executePool = (domain: string) =>
   api<ExecuteResult>("/api/pool/execute", { method: "POST", body: JSON.stringify({ domain }) });
 export const getLive = () => api<LiveStatus>("/live");
+
+export interface SandboxOrder {
+  order_id: string; symbol: string; event: string | null; contract: string | null;
+  side: "buy" | "sell"; outcome: "yes" | "no"; price: number; qty: number; filled: number;
+  avg_fill_price: number | null; status: string; created: number | null; updated: number | null;
+}
+export interface SandboxPosition {
+  symbol: string; event: string | null; contract: string | null; outcome: "yes" | "no";
+  qty: number; avg_price: number; market_value: number | null; unrealized_pnl: number | null;
+}
+export interface SandboxAccount {
+  label: string;
+  usd: { amount?: number; available?: number; change?: number };
+  positions: SandboxPosition[];
+  open_orders: SandboxOrder[];
+  orders: SandboxOrder[];
+  stats: { orders: number; filled_orders: number; contracts_filled: number };
+}
+export interface SandboxFill {
+  time: number | null; symbol: string; event: string | null; contract: string | null;
+  qty: number; yes_price: number; yes_buyer: string; yes_seller: string;
+  between_our_agents: boolean; orders: { shop: string | null; mm: string | null };
+}
+export interface SandboxAccounts {
+  mode: "sandbox"; live_running: boolean; live_symbol: string | null;
+  fetched_at: number; error: string | null;
+  accounts: { mm: SandboxAccount; shop: SandboxAccount };
+  fills: SandboxFill[];
+}
+export const getSandboxAccounts = () => api<SandboxAccounts>("/sandbox/accounts");
+
 export const startLive = (token: string, seconds = 180) =>
   api<{ started: boolean }>("/live/start", {
     method: "POST", body: JSON.stringify({ seconds }), headers: { "X-Demo-Admin-Token": token },
