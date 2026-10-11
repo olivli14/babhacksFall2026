@@ -1,0 +1,4 @@
+# AI-generated with Claude (Anthropic).
+.venv/
+__pycache__/
+.env
