@@ -29,9 +29,11 @@ _Last updated 2026-10-11._
 | 5. `forecast.py` stub | ✅ done (stub) | `.venv/bin/python -c "from forecast import prob_above; print(prob_above('NYC', 66, '2026-10-12'))"` prints ~0.5. Normal curve around a fixed 66°F mean (sd 5°F, small jitter); location and date are ignored. **Teammate replaces it.** |
 | 6. `mm_agent.py`, `shop_agent.py`, `contracts.py` | ✅ done (branch `agents`) | `MODE=mock .venv/bin/python mm_agent.py` prints bid/ask for all 6 NYC buckets. `MODE=mock .venv/bin/python shop_agent.py` prints a recommendation, 3 filled orders, and hot/cold scenarios |
 | 6b. Live sandbox run of both agents | ✅ done | `.venv/bin/python scripts/live_demo.py 300`: real `MarketMaker` + shop sizing on a sandbox crypto contract for 300 s, then cancels everything. Fair value = mid of other traders' quotes |
-| 7. `api.py` (FastAPI) | ✅ done (branch `gemini`, uncommitted) | `.venv/bin/uvicorn api:app --port 8000`, then `curl localhost:8000/health` returns `{"mode":"mock","mm_running":true,…,"sandbox_ok":true}`. See endpoint notes below |
-| 8. Deploy backend to Railway | next | |
-| 9–11 | not started | |
+| 7. `api.py` (FastAPI) | ✅ done | `.venv/bin/uvicorn api:app --port 8000`, then `curl localhost:8000/health` returns `{"mode":"mock","mm_running":true,…,"sandbox_ok":true}`. See endpoint notes below |
+| 8. Deploy backend to Railway | ✅ done | `curl https://api-production-2173.up.railway.app/health` returns `mode: mock, mm_running: true, sandbox_ok: true`. Railway project `weather-hedge`, service `api`; deploy with `cd backend && railway up --service api --ci`. Start command comes from the `RAILPACK_START_CMD` variable (railway.json alone was ignored) |
+| 9. Next.js frontend | ✅ done | `cd frontend && npm run dev -- -p 3005` with `NEXT_PUBLIC_API_URL`. One page: profile, market, hedge, scenario toggle, live sandbox panel |
+| 10. Deploy frontend to Vercel | next | |
+| 11. Intake chat | not started (preset is enough for the demo) | |
 
 **Backend files so far**
 - `config.py`: loads `backend/.env` (template in `backend/.env.example`). Holds `MODE` and per-agent credentials.
