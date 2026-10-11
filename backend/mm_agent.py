@@ -15,6 +15,7 @@ import math
 import threading
 import time
 from dataclasses import dataclass, field
+from types import ModuleType
 from typing import Callable
 
 import contracts
@@ -38,6 +39,7 @@ class MarketMaker:
     symbols: list[str]
     config: MMConfig = field(default_factory=MMConfig)
     fair_value_fn: Callable[[str], float] = contracts.fair_value
+    exchange: ModuleType = market  # market (MODE-based), or gemini_client / mock_book directly
     state: dict = field(default_factory=dict)  # symbol -> latest quote info, for the API
     _live: dict = field(default_factory=dict)  # symbol -> [order ids]
     _stop: threading.Event = field(default_factory=threading.Event)
@@ -46,7 +48,7 @@ class MarketMaker:
     def inventory(self, symbol: str) -> tuple[float, float]:
         """(YES held, NO held) for this symbol."""
         yes = no = 0.0
-        for p in market.get_positions(ACCOUNT):
+        for p in self.exchange.get_positions(ACCOUNT):
             if p["symbol"] == symbol:
                 if p["outcome"] == "yes":
                     yes += float(p["totalQuantity"])
@@ -64,18 +66,18 @@ class MarketMaker:
     def requote(self, symbol: str) -> None:
         for oid in self._live.pop(symbol, []):
             try:
-                market.cancel_order(ACCOUNT, oid)
+                self.exchange.cancel_order(ACCOUNT, oid)
             except Exception:
                 pass  # already filled or gone
         fair = self.fair_value_fn(symbol)
         yes, no = self.inventory(symbol)
         bid, ask = self.quote(fair, yes - no)
         size = self.config.size
-        ids = [market.place_order(ACCOUNT, symbol, "buy", "yes", bid, size)]
+        ids = [self.exchange.place_order(ACCOUNT, symbol, "buy", "yes", bid, size)]
         if yes >= size:
-            ids.append(market.place_order(ACCOUNT, symbol, "sell", "yes", ask, size))
+            ids.append(self.exchange.place_order(ACCOUNT, symbol, "sell", "yes", ask, size))
         else:
-            ids.append(market.place_order(ACCOUNT, symbol, "buy", "no", round(1 - ask, 2), size))
+            ids.append(self.exchange.place_order(ACCOUNT, symbol, "buy", "no", round(1 - ask, 2), size))
         self._live[symbol] = ids
         self.state[symbol] = {"fair_value": round(fair, 4), "bid": bid, "ask": ask, "size": size,
                               "inventory_yes": yes, "inventory_no": no, "updated": time.time()}
@@ -104,7 +106,7 @@ class MarketMaker:
         for s in list(self._live):
             for oid in self._live.pop(s):
                 try:
-                    market.cancel_order(ACCOUNT, oid)
+                    self.exchange.cancel_order(ACCOUNT, oid)
                 except Exception:
                     pass
 
