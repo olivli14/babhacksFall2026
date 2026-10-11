@@ -40,7 +40,7 @@ export default function DashboardPage() {
           Analyze another business
         </Link>
       </header>
-      <div className="mx-auto max-w-[1180px] px-6 sm:px-10"><div className="border-t border-ink" /></div>
+      <div className="mx-auto max-w-[1180px] px-6 sm:px-10"><div className="border-t border-line" /></div>
 
       <main className="mx-auto max-w-[1180px] px-6 pb-24 pt-10 sm:px-10">
         {error && !data && <ErrorState message={error} />}
@@ -67,10 +67,10 @@ function Body({ d, days, setDays, loading }: {
       <div className="flex flex-wrap items-start justify-between gap-8">
         <div className="flex items-start gap-5">
           {b.logo_url
-            ? <img src={b.logo_url} alt="" className="mt-2 size-14 border border-line bg-white object-contain p-1" />
-            : <span className="mt-2 size-14 bg-wash" />}
+            ? <img src={b.logo_url} alt="" className="size-14 rounded-lg border border-line bg-white object-contain p-1" />
+            : <span className="size-14 rounded-lg bg-wash" />}
           <div>
-            <h1 className="display text-[52px] leading-none">{b.name || b.domain}</h1>
+            <h1 className="display text-[40px] leading-none">{b.name || b.domain}</h1>
             <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[14px] text-ink-2">
               <SideBadge side={b.side} />
               <span>{[b.domain, b.address].filter(Boolean).join(" · ")}</span>
@@ -92,7 +92,7 @@ function Body({ d, days, setDays, loading }: {
       </div>
 
       {b.side === "needs_review" && (
-        <p className="display mt-14 max-w-3xl text-[32px] leading-tight">
+        <p className="display mt-12 max-w-3xl text-[24px] leading-snug">
           We couldn&apos;t tell whether hot or cold weather hurts this business. Try its menu page, or another URL.
         </p>
       )}
@@ -100,13 +100,13 @@ function Body({ d, days, setDays, loading }: {
       {ready && (
         <>
           {/* The lede: the whole story in one sentence */}
-          <p className="display mb-16 mt-14 max-w-[52rem] text-[34px] leading-[1.25] text-ink sm:text-[40px]">
+          <p className="mb-14 mt-12 max-w-[50rem] text-[24px] font-normal leading-[1.45] tracking-[-0.01em] text-ink-2 sm:text-[28px]">
             {b.name || b.domain} loses about{" "}
-            <span className={hurtColor}>{usd(b.dollars_per_degree!)}</span> for every degree {city} goes{" "}
+            <span className={`font-semibold ${hurtColor}`}>{usd(b.dollars_per_degree!)}</span> for every degree {city} goes{" "}
             {b.side === "cold_hurt" ? "below" : "above"} {b.baseline_temp_f}°F. Tomorrow should reach{" "}
-            <span className="tabular">{fc!.mean_high_f.toFixed(0)}°F</span>. Hedged alone, that protection costs{" "}
+            <span className="font-semibold text-ink">{fc!.mean_high_f.toFixed(0)}°F</span>. Hedged alone, that protection costs{" "}
             <span className="text-muted line-through decoration-1">{usd(rec!.standalone_daily_cost, 2)}</span>; in the pool,{" "}
-            <span className="underline decoration-2 underline-offset-[6px]">{usd(rec!.your_daily_cost, 2)}</span>.
+            <span className="font-semibold text-ink">{usd(rec!.your_daily_cost, 2)}</span>.
           </p>
 
           <Section n="01" title={<>Tomorrow in {city}</>}
@@ -125,7 +125,7 @@ function Body({ d, days, setDays, loading }: {
                 </p>
               </div>
               <table className="w-full self-start text-[14px]">
-                <thead><tr className="border-b border-ink text-left text-[13px] text-muted"><th className="pb-2 font-normal">Member</th><th className="pb-2 font-normal">Hurt by</th><th className="pb-2 text-right font-normal">Per °F</th></tr></thead>
+                <thead><tr className="border-b border-line-strong text-left text-[13px] text-muted"><th className="pb-2 font-normal">Member</th><th className="pb-2 font-normal">Hurt by</th><th className="pb-2 text-right font-normal">Per °F</th></tr></thead>
                 <tbody>
                   {d.pool.map((p) => (
                     <tr key={p.domain} className="border-b border-line">
@@ -165,7 +165,7 @@ function Body({ d, days, setDays, loading }: {
             {rec!.contracts.length ? (
               <table className="w-full text-[14px]">
                 <thead>
-                  <tr className="border-b border-ink text-left text-[13px] text-muted">
+                  <tr className="border-b border-line-strong text-left text-[13px] text-muted">
                     <th className="pb-2 font-normal">The pool buys</th><th className="pb-2 text-right font-normal">Contracts</th>
                     <th className="pb-2 text-right font-normal">Price</th><th className="pb-2 text-right font-normal">Cost</th>
                   </tr>
@@ -257,7 +257,7 @@ function WhatIf({ d }: { d: Dashboard }) {
       <div className="grid gap-12 xl:grid-cols-[1fr_1.15fr] xl:items-center">
         <div>
           <p className="flex items-baseline gap-4">
-            <span className="display tabular text-[96px] leading-none">{t}°</span>
+            <span className="display tabular text-[64px] leading-none">{t}°F</span>
             {rolled === t && <span className="text-[13px] text-muted">rolled from the forecast</span>}
           </p>
           <input type="range" min={lo} max={hi} value={t} onChange={(e) => { setT(Number(e.target.value)); setRolled(null); }}
@@ -277,7 +277,7 @@ function WhatIf({ d }: { d: Dashboard }) {
             <li key={r.label}>
               <div className="flex items-baseline justify-between text-[13px]">
                 <span className="text-ink-2">{r.label}</span>
-                <span className="display tabular text-[28px] leading-none text-ink">{usdSigned(r.v)}</span>
+                <span className="display tabular text-[22px] leading-none text-ink">{usdSigned(r.v)}</span>
               </div>
               <span className="relative mt-2 block h-7 bg-wash">
                 <span className="absolute inset-y-0 left-1/2 w-px bg-line-strong" />
@@ -306,7 +306,7 @@ function Skeleton() {
 function ErrorState({ message }: { message: string }) {
   return (
     <div className="mx-auto max-w-xl py-20 text-center">
-      <p className="display text-[32px]">We couldn&apos;t load this dashboard.</p>
+      <p className="display text-[24px]">We couldn&apos;t load this dashboard.</p>
       <p className="mt-2 text-[15px] text-ink-2">{message}</p>
       <Link href="/" className="mt-6 inline-block text-[14px] underline underline-offset-4">Start over</Link>
     </div>

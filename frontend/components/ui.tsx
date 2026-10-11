@@ -6,7 +6,7 @@ import { Side, sideLabel } from "@/lib/api";
 export function Wordmark({ href = "/" }: { href?: string }) {
   return (
     <Link href={href} className="group inline-flex items-baseline gap-2 text-ink">
-      <span className="display text-[28px] leading-none">{BRAND}</span>
+      <span className="serif text-[28px] leading-none">{BRAND}</span>
       <svg width="26" height="8" viewBox="0 0 26 8" aria-hidden className="translate-y-[-2px]">
         <path d="M1 4c4-4 8-4 12 0s8 4 12 0" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
       </svg>
@@ -22,10 +22,10 @@ export function Section({
   aside?: React.ReactNode; dim?: boolean;
 }) {
   return (
-    <section className={`grid gap-x-14 gap-y-6 border-t border-ink pb-16 pt-5 lg:grid-cols-[250px_1fr] ${dim ? "opacity-60 transition-opacity" : "transition-opacity"}`}>
+    <section className={`grid gap-x-14 gap-y-6 border-t border-line-strong pb-16 pt-5 lg:grid-cols-[250px_1fr] ${dim ? "opacity-60 transition-opacity" : "transition-opacity"}`}>
       <header>
         <p className="tabular text-[13px] text-muted">{n}</p>
-        <h2 className="display mt-2 text-[30px] leading-[1.08] text-ink">{title}</h2>
+        <h2 className="display mt-2 text-[22px] leading-tight text-ink">{title}</h2>
         {note && <p className="mt-3 text-[14px] leading-relaxed text-ink-2">{note}</p>}
         {aside && <div className="mt-5">{aside}</div>}
       </header>
@@ -36,7 +36,7 @@ export function Section({
 
 /** A quiet container for grouped content inside a section. */
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-[3px] border border-line bg-card ${className}`}>{children}</div>;
+  return <div className={`rounded-lg border border-line bg-card ${className}`}>{children}</div>;
 }
 
 export function Stat({
@@ -46,7 +46,7 @@ export function Stat({
   return (
     <div className="min-w-0">
       <p className="text-[13px] text-ink-2">{label}</p>
-      <p className={`display tabular mt-1 text-[44px] leading-none ${color}`}>{value}</p>
+      <p className={`display tabular mt-1.5 text-[32px] leading-none ${color}`}>{value}</p>
       {note && <p className="mt-2.5 text-[13px] leading-snug text-muted">{note}</p>}
     </div>
   );
@@ -110,9 +110,9 @@ export function Button({ children, onClick, disabled, variant = "solid", type = 
   children: React.ReactNode; onClick?: () => void; disabled?: boolean; variant?: "solid" | "outline";
   type?: "button" | "submit"; className?: string;
 }) {
-  const base = "inline-flex items-center justify-center gap-2 rounded-[3px] px-4 py-2.5 text-[14px] font-medium transition-colors disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
+  const base = "inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-[14px] font-medium transition-colors disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
   const look = variant === "solid"
-    ? "bg-ink text-page hover:bg-black"
-    : "border border-ink text-ink hover:bg-ink hover:text-page";
+    ? "bg-ink text-white hover:bg-black"
+    : "border border-line-strong bg-card text-ink hover:border-ink";
   return <button type={type} onClick={onClick} disabled={disabled} className={`${base} ${look} ${className}`}>{children}</button>;
 }

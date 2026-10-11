@@ -8,8 +8,8 @@ import {
 import { Bucket, Dashboard, Side, shortDate, usd, usdSigned } from "@/lib/api";
 
 export const C = {
-  ink: "#1b1a17", ink2: "#4c4840", muted: "#857e6f", line: "#dbd3c3", base: "#b5ab96",
-  brand: "#1b1a17", cold: "#2463b8", heat: "#d9541e", prior: "#cdc4b0",
+  ink: "#171717", ink2: "#52524e", muted: "#8a8a85", line: "#e4e4e0", base: "#c4c4bf",
+  brand: "#171717", cold: "#2463b8", heat: "#d9541e", prior: "#cfcfca",
 };
 
 /* ---------- Tomorrow's forecast: one bar per Gemini bucket ---------- */
@@ -92,7 +92,7 @@ function HistoryTip({ active, payload }: { active?: boolean; payload?: { payload
   if (!active || !payload?.length) return null;
   const r = payload[0].payload;
   return (
-    <div className="rounded-[3px] border border-ink bg-card px-3 py-2.5 text-[13px]">
+    <div className="rounded-md border border-line bg-card shadow-sm px-3 py-2.5 text-[13px]">
       <p className="mb-1.5 font-medium text-ink">{shortDate(r.date)}</p>
       {r.now != null && <p className="tabular flex justify-between gap-6"><span className="text-ink">High</span><span className="font-medium text-ink">{r.now.toFixed(0)}°F</span></p>}
       {r.normal != null && <p className="tabular flex justify-between gap-6"><span className="text-ink-2">Normal</span><span className="text-ink-2">{r.normal.toFixed(0)}°F</span></p>}
@@ -129,7 +129,7 @@ function PnlTip({ active, payload }: { active?: boolean; payload?: { payload: Da
   if (!active || !payload?.length) return null;
   const r = payload[0].payload;
   return (
-    <div className="rounded-[3px] border border-ink bg-card px-3 py-2.5 text-[13px]">
+    <div className="rounded-md border border-line bg-card shadow-sm px-3 py-2.5 text-[13px]">
       <p className="font-medium text-ink">{shortDate(r.date)}</p>
       <p className="mb-1.5 text-muted">High {r.high_f.toFixed(0)}°F · normal {r.normal_high_f.toFixed(0)}°F</p>
       <p className="tabular flex justify-between gap-6"><span className="text-ink-2">Without hedge</span><span className="text-ink">{usdSigned(r.unhedged)}</span></p>
@@ -184,7 +184,7 @@ function SimTip({ active, payload }: { active?: boolean; payload?: { payload: { 
   if (!active || !payload?.length) return null;
   const r = payload[0].payload;
   return (
-    <div className="rounded-[3px] border border-ink bg-card px-3 py-2.5 text-[13px]">
+    <div className="rounded-md border border-line bg-card shadow-sm px-3 py-2.5 text-[13px]">
       <p className="mb-1.5 font-medium text-ink">{usd(r.from)} to {usd(r.to)}</p>
       <p className="tabular flex justify-between gap-6"><span className="text-ink-2">Without hedge</span><span className="text-ink">{r.unhedged} days</span></p>
       <p className="tabular flex justify-between gap-6"><span className="text-ink-2">With hedge</span><span className="font-medium text-ink">{r.hedged} days</span></p>

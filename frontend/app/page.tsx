@@ -74,11 +74,11 @@ export default function Onboard() {
         <Wordmark />
         <p className="hidden text-[13px] text-muted sm:block">Weather hedging for small businesses, on Gemini prediction markets</p>
       </header>
-      <div className="mx-auto max-w-[1180px] px-6 sm:px-10"><div className="border-t border-ink" /></div>
+      <div className="mx-auto max-w-[1180px] px-6 sm:px-10"><div className="border-t border-line" /></div>
 
       <main className="mx-auto grid max-w-[1180px] gap-14 px-6 pb-24 pt-12 sm:px-10 lg:grid-cols-[1fr_430px] lg:gap-20 lg:pt-16">
         <div>
-          <h1 className="display text-[64px] leading-[0.95] text-ink sm:text-[88px]">
+          <h1 className="serif text-[60px] leading-[0.98] text-ink sm:text-[76px]">
             Welcome to <em className="italic">{BRAND}</em>.
           </h1>
           <p className="mt-7 max-w-[34rem] text-[19px] leading-[1.55] text-ink-2">
@@ -99,8 +99,8 @@ export default function Onboard() {
         </div>
 
         <div>
-          <div className="rounded-[3px] border border-ink bg-card p-7 sm:p-8">
-            <h2 className="display text-[30px] leading-none">Get started</h2>
+          <div className="rounded-xl border border-line bg-card p-7 shadow-sm sm:p-8">
+            <h2 className="display text-[22px]">Get started</h2>
             <p className="mt-2 text-[14px] text-ink-2">Takes about a minute the first time we see a website.</p>
 
             {busy ? (
@@ -146,13 +146,13 @@ export default function Onboard() {
           {demos.length > 0 && !busy && (
             <div className="mt-10">
               <p className="text-[13px] text-muted">Or open one we&apos;ve already analyzed</p>
-              <ul className="mt-3 border-t border-ink">
+              <ul className="mt-3 border-t border-line">
                 {demos.map((b) => (
                   <li key={`${b.domain}-${b.address}`} className="border-b border-line">
                     <button onClick={() => router.push(`/dashboard/${encodeURIComponent(b.domain)}`)}
                             className="group flex w-full items-center gap-3 py-3 text-left">
                       {b.logo_url
-                        ? <img src={b.logo_url} alt="" className="size-8 border border-line bg-white object-contain" />
+                        ? <img src={b.logo_url} alt="" className="size-8 rounded border border-line bg-white object-contain" />
                         : <span className="size-8 bg-wash" />}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[15px] font-medium group-hover:underline">{b.name || b.domain}</span>
@@ -172,7 +172,7 @@ export default function Onboard() {
 }
 
 const inputCls =
-  "w-full rounded-[3px] border border-line-strong bg-page px-3 py-2.5 text-[15px] text-ink placeholder:text-muted/70 outline-none transition-colors focus:border-ink focus:bg-white";
+  "w-full rounded-md border border-line-strong bg-white px-3 py-2.5 text-[15px] text-ink placeholder:text-muted/70 outline-none transition-colors focus:border-ink focus:ring-2 focus:ring-ink/10";
 
 function Field({ label, htmlFor, optional, hint, children }: {
   label: string; htmlFor: string; optional?: boolean; hint?: string; children: React.ReactNode;

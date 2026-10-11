@@ -167,13 +167,13 @@ function LivePanel() {
         <div className="flex flex-wrap gap-2">
           <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Admin token"
                  aria-label="Admin token" autoComplete="off"
-                 className="w-56 rounded-[3px] border border-line-strong bg-page px-3 py-2 text-[13px] outline-none focus:border-ink" />
+                 className="w-56 rounded-md border border-line-strong bg-white px-3 py-2 text-[13px] outline-none focus:border-ink" />
           <Button onClick={start} disabled={!token || status?.running}>
             {status?.running ? "Running…" : "Start a 3-minute live run"}
           </Button>
         </div>
         {err && <p className="mt-2 text-[13px] text-bad">{err}</p>}
-        <pre className="mt-3 max-h-56 overflow-auto rounded-[3px] bg-ink p-4 font-mono text-[12px] leading-relaxed text-[#e9e3d6]">
+        <pre className="mt-3 max-h-56 overflow-auto rounded-md bg-ink p-4 font-mono text-[12px] leading-relaxed text-[#e4e4e0]">
           {status?.log?.length ? status.log.join("\n") : "No live run yet."}
         </pre>
       </div>

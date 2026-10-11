@@ -1,4 +1,4 @@
-/* AI-generated with Claude (Anthropic). Design tokens for the app: editorial, paper and ink. */
+/* AI-generated with Claude (Anthropic). Design tokens for the app. */
 @import "tailwindcss";
 
 @theme inline {
@@ -6,20 +6,20 @@
   --font-serif: var(--font-display), Georgia, "Times New Roman", serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
 
-  /* Paper and ink */
-  --color-page: #f3efe6;
-  --color-card: #faf8f3;
-  --color-wash: #e9e3d6;
-  --color-line: #dbd3c3;
-  --color-line-strong: #b5ab96;
-  --color-ink: #1b1a17;
-  --color-ink-2: #4c4840;
-  --color-muted: #857e6f;
+  /* Neutral surfaces and ink */
+  --color-page: #f8f8f6;
+  --color-card: #ffffff;
+  --color-wash: #efefec;
+  --color-line: #e4e4e0;
+  --color-line-strong: #c4c4bf;
+  --color-ink: #171717;
+  --color-ink-2: #52524e;
+  --color-muted: #8a8a85;
 
   /* Ink is the brand. Hedged series and primary actions use it. */
-  --color-brand: #1b1a17;
+  --color-brand: #171717;
   --color-brand-ink: #000000;
-  --color-brand-wash: #e4ddcd;
+  --color-brand-wash: #ececea;
 
   /* Weather semantics. Validated together on the paper surface (CVD + contrast). */
   --color-cold: #2463b8;
@@ -45,16 +45,22 @@ body {
 }
 
 ::selection {
-  background: #1b1a17;
-  color: #f3efe6;
+  background: #171717;
+  color: #ffffff;
 }
 
 .tabular {
   font-variant-numeric: tabular-nums;
 }
 
-/* Serif display numbers and headlines */
+/* Headlines and big numbers: the UI sans, tighter */
 .display {
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+/* Serif: wordmark and the welcome headline only */
+.serif {
   font-family: var(--font-serif);
   font-weight: 400;
   letter-spacing: -0.01em;
